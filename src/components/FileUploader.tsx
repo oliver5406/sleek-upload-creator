@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useRef } from 'react';
-import { Cloud, X, Upload, Camera, Home } from 'lucide-react';
+import { Cloud, X, Upload, Camera, Home, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/components/ui/use-toast';
@@ -404,3 +404,4 @@ const FileUploader = () => {
 };
 
 export default FileUploader;
+
