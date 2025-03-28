@@ -10,7 +10,7 @@ const Header = () => {
             Property Video Maker
           </h1>
           <p className="max-w-lg text-muted-foreground">
-            Transform your property listings into engaging video tours. Upload images, add customized descriptions for each photo, and create professional videos to showcase properties to potential buyers.
+            Transform your property listings into engaging video tours. Upload images and customize the description for each photo to create professional videos that showcase properties in their best light.
           </p>
         </div>
       </div>

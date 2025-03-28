@@ -18,7 +18,7 @@ const FileItem: React.FC<FileItemProps> = ({ file, id, preview, onRemove, disabl
   };
 
   return (
-    <div className="file-item">
+    <div className="file-item flex items-center justify-between">
       <div className="flex items-center gap-3">
         <div className="relative flex-shrink-0 w-12 h-12 overflow-hidden rounded-md">
           <img 

@@ -3,25 +3,15 @@ import React, { useState, useCallback, useRef } from 'react';
 import { X, Upload, Camera, Home, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import FileItem from '@/components/FileItem';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 type FileWithPreview = {
   file: File;
   id: string;
   preview: string;
-  type?: 'exterior' | 'interior' | 'feature';
   prompt?: string;
 };
 
@@ -31,7 +21,6 @@ const FileUploader = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [videoDuration, setVideoDuration] = useState(30);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -65,7 +54,6 @@ const FileUploader = () => {
           file,
           id,
           preview: URL.createObjectURL(file),
-          type: 'exterior' as 'exterior' | 'interior' | 'feature',
           prompt: ''
         };
       });
@@ -110,14 +98,6 @@ const FileUploader = () => {
     });
   }, []);
 
-  const updateFileType = useCallback((id: string, type: 'exterior' | 'interior' | 'feature') => {
-    setFiles(prev => 
-      prev.map(file => 
-        file.id === id ? { ...file, type } : file
-      )
-    );
-  }, []);
-
   const updateFilePrompt = useCallback((id: string, prompt: string) => {
     setFiles(prev => 
       prev.map(file => 
@@ -130,10 +110,6 @@ const FileUploader = () => {
     setFiles([]);
     setVideoUrl(null);
   }, []);
-
-  const handleSliderChange = (value: number[]) => {
-    setVideoDuration(value[0]);
-  };
 
   const mockApiCall = useCallback(() => {
     if (files.length === 0) {
@@ -193,28 +169,10 @@ const FileUploader = () => {
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
-      {!videoUrl && (
-        <div className="space-y-6">
-          <div>
-            <div className="flex justify-between mb-2">
-              <Label>Video Duration (seconds)</Label>
-              <span className="text-sm font-medium">{videoDuration}s</span>
-            </div>
-            <Slider 
-              defaultValue={[30]} 
-              max={60} 
-              step={5} 
-              min={15} 
-              onValueChange={handleSliderChange}
-            />
-          </div>
-        </div>
-      )}
-
       <div
         className={`relative flex flex-col items-center justify-center w-full min-h-[300px] p-8 border-2 border-dashed rounded-xl transition-all ${
           isDragging ? 'border-primary bg-primary/5' : 'border-muted'
-        }`}
+        } ${files.length > 0 ? 'hidden md:flex' : 'flex'}`}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -255,51 +213,64 @@ const FileUploader = () => {
             <h3 className="text-lg font-medium">
               {files.length} {files.length === 1 ? 'Image' : 'Images'} Selected
             </h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearFiles}
-              disabled={isUploading}
-            >
-              <X className="mr-2 h-4 w-4" />
-              Clear All
-            </Button>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearFiles}
+                disabled={isUploading}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Clear All
+              </Button>
+              {!videoUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBrowseFiles}
+                  disabled={isUploading}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Add More
+                </Button>
+              )}
+            </div>
           </div>
 
-          <div className="grid gap-6 max-h-[600px] overflow-y-auto p-1">
+          <div className="grid gap-6 max-h-[600px] overflow-y-auto px-1 py-2">
             {files.map((file) => (
-              <div key={file.id} className="flex flex-col border rounded-lg p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <FileItem
-                    file={file.file}
-                    id={file.id}
-                    preview={file.preview}
-                    onRemove={removeFile}
-                    disabled={isUploading}
-                  />
-                  <Select 
-                    value={file.type} 
-                    onValueChange={(value: 'exterior' | 'interior' | 'feature') => updateFileType(file.id, value)}
-                  >
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="Image type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="exterior">Exterior</SelectItem>
-                      <SelectItem value="interior">Interior</SelectItem>
-                      <SelectItem value="feature">Feature</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div key={file.id} className="grid md:grid-cols-2 gap-4 border rounded-lg p-4 bg-card shadow-sm">
+                <div className="space-y-3">
+                  <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
+                    <img 
+                      src={file.preview} 
+                      alt={file.file.name} 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium truncate">{file.file.name}</p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="flex-shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeFile(file.id)}
+                      disabled={isUploading}
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Remove file</span>
+                    </Button>
+                  </div>
                 </div>
                 
-                <div>
-                  <Label htmlFor={`prompt-${file.id}`}>Image Description/Prompt</Label>
+                <div className="flex flex-col h-full">
+                  <Label htmlFor={`prompt-${file.id}`} className="mb-2">Image Description</Label>
                   <Textarea 
                     id={`prompt-${file.id}`}
-                    placeholder="Describe this image or provide a prompt (e.g., 'Spacious living room with natural light and modern furniture')"
+                    placeholder="Describe this image or provide details about what you want to highlight (e.g., 'Spacious living room with natural light and modern furniture')"
                     value={file.prompt}
                     onChange={(e) => updateFilePrompt(file.id, e.target.value)}
-                    className="mt-2"
+                    className="flex-grow resize-none"
                     disabled={isUploading}
                   />
                 </div>
