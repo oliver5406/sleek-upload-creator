@@ -3,7 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Home } from 'lucide-react';
 
 const NavBar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -12,8 +12,9 @@ const NavBar = () => {
     <nav className="w-full py-4 border-b border-muted">
       <div className="container">
         <div className="flex justify-between items-center">
-          <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            Image to Video Converter
+          <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-transparent flex items-center gap-2">
+            <Home size={24} className="text-blue-500" />
+            PropertyVideoMaker
           </Link>
           
           <div className="flex items-center space-x-4">
