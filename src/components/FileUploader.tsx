@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useRef } from 'react';
-import { Cloud, X, Upload, Camera, Home, Download } from 'lucide-react';
+import { X, Upload, Camera, Home, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/components/ui/use-toast';
@@ -15,12 +15,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
 
 type FileWithPreview = {
   file: File;
   id: string;
   preview: string;
   type?: 'exterior' | 'interior' | 'feature';
+  prompt?: string;
 };
 
 const FileUploader = () => {
@@ -29,14 +31,7 @@ const FileUploader = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [propertyDetails, setPropertyDetails] = useState({
-    address: '',
-    bedrooms: '3',
-    bathrooms: '2',
-    price: '',
-    sqft: '',
-    duration: 30,
-  });
+  const [videoDuration, setVideoDuration] = useState(30);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -70,7 +65,8 @@ const FileUploader = () => {
           file,
           id,
           preview: URL.createObjectURL(file),
-          type: 'exterior' as 'exterior' | 'interior' | 'feature'
+          type: 'exterior' as 'exterior' | 'interior' | 'feature',
+          prompt: ''
         };
       });
 
@@ -122,31 +118,21 @@ const FileUploader = () => {
     );
   }, []);
 
+  const updateFilePrompt = useCallback((id: string, prompt: string) => {
+    setFiles(prev => 
+      prev.map(file => 
+        file.id === id ? { ...file, prompt } : file
+      )
+    );
+  }, []);
+
   const clearFiles = useCallback(() => {
     setFiles([]);
     setVideoUrl(null);
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setPropertyDetails(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setPropertyDetails(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
   const handleSliderChange = (value: number[]) => {
-    setPropertyDetails(prev => ({
-      ...prev,
-      duration: value[0]
-    }));
+    setVideoDuration(value[0]);
   };
 
   const mockApiCall = useCallback(() => {
@@ -159,10 +145,12 @@ const FileUploader = () => {
       return;
     }
 
-    if (!propertyDetails.address) {
+    // Check if all files have prompts
+    const missingPrompts = files.some(file => !file.prompt);
+    if (missingPrompts) {
       toast({
-        title: "Missing information",
-        description: "Please enter the property address.",
+        title: "Missing prompts",
+        description: "Please add a prompt for each image.",
         variant: "destructive"
       });
       return;
@@ -193,7 +181,7 @@ const FileUploader = () => {
       
       setProgress(progressValue);
     }, 500);
-  }, [files, propertyDetails, toast]);
+  }, [files, toast]);
 
   const downloadVideo = useCallback(() => {
     // In a real app, this would trigger the actual file download
@@ -207,83 +195,10 @@ const FileUploader = () => {
     <div className="w-full max-w-3xl mx-auto space-y-8">
       {!videoUrl && (
         <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label htmlFor="address">Property Address</Label>
-              <Input 
-                id="address" 
-                name="address" 
-                value={propertyDetails.address} 
-                onChange={handleInputChange} 
-                placeholder="123 Main St, City, State"
-              />
-            </div>
-            <div>
-              <Label htmlFor="price">Listing Price</Label>
-              <Input 
-                id="price" 
-                name="price" 
-                value={propertyDetails.price} 
-                onChange={handleInputChange} 
-                placeholder="$450,000"
-              />
-            </div>
-          </div>
-          
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <Label htmlFor="bedrooms">Bedrooms</Label>
-              <Select 
-                value={propertyDetails.bedrooms} 
-                onValueChange={(value) => handleSelectChange('bedrooms', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1</SelectItem>
-                  <SelectItem value="2">2</SelectItem>
-                  <SelectItem value="3">3</SelectItem>
-                  <SelectItem value="4">4</SelectItem>
-                  <SelectItem value="5">5+</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="bathrooms">Bathrooms</Label>
-              <Select 
-                value={propertyDetails.bathrooms} 
-                onValueChange={(value) => handleSelectChange('bathrooms', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1</SelectItem>
-                  <SelectItem value="1.5">1.5</SelectItem>
-                  <SelectItem value="2">2</SelectItem>
-                  <SelectItem value="2.5">2.5</SelectItem>
-                  <SelectItem value="3">3</SelectItem>
-                  <SelectItem value="3.5">3.5+</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="sqft">Square Footage</Label>
-              <Input 
-                id="sqft" 
-                name="sqft" 
-                value={propertyDetails.sqft} 
-                onChange={handleInputChange} 
-                placeholder="2,200"
-              />
-            </div>
-          </div>
-          
           <div>
             <div className="flex justify-between mb-2">
               <Label>Video Duration (seconds)</Label>
-              <span className="text-sm font-medium">{propertyDetails.duration}s</span>
+              <span className="text-sm font-medium">{videoDuration}s</span>
             </div>
             <Slider 
               defaultValue={[30]} 
@@ -351,29 +266,43 @@ const FileUploader = () => {
             </Button>
           </div>
 
-          <div className="grid gap-3 max-h-[300px] overflow-y-auto p-1">
+          <div className="grid gap-6 max-h-[600px] overflow-y-auto p-1">
             {files.map((file) => (
-              <div key={file.id} className="flex items-center justify-between border rounded-lg p-2">
-                <FileItem
-                  file={file.file}
-                  id={file.id}
-                  preview={file.preview}
-                  onRemove={removeFile}
-                  disabled={isUploading}
-                />
-                <Select 
-                  value={file.type} 
-                  onValueChange={(value: 'exterior' | 'interior' | 'feature') => updateFileType(file.id, value)}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Image type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="exterior">Exterior</SelectItem>
-                    <SelectItem value="interior">Interior</SelectItem>
-                    <SelectItem value="feature">Feature</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div key={file.id} className="flex flex-col border rounded-lg p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <FileItem
+                    file={file.file}
+                    id={file.id}
+                    preview={file.preview}
+                    onRemove={removeFile}
+                    disabled={isUploading}
+                  />
+                  <Select 
+                    value={file.type} 
+                    onValueChange={(value: 'exterior' | 'interior' | 'feature') => updateFileType(file.id, value)}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Image type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="exterior">Exterior</SelectItem>
+                      <SelectItem value="interior">Interior</SelectItem>
+                      <SelectItem value="feature">Feature</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor={`prompt-${file.id}`}>Image Description/Prompt</Label>
+                  <Textarea 
+                    id={`prompt-${file.id}`}
+                    placeholder="Describe this image or provide a prompt (e.g., 'Spacious living room with natural light and modern furniture')"
+                    value={file.prompt}
+                    onChange={(e) => updateFilePrompt(file.id, e.target.value)}
+                    className="mt-2"
+                    disabled={isUploading}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -404,4 +333,3 @@ const FileUploader = () => {
 };
 
 export default FileUploader;
-
