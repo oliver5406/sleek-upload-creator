@@ -28,7 +28,7 @@ const Index = () => {
               <div className="pt-4">
                 <Button size="lg" asChild>
                   <Link to={isAuthenticated ? "/dashboard" : "/register"}>
-                    {isAuthenticated ? "Go to Dashboard" : "Get Started Free"}
+                    {isAuthenticated ? "Go to Dashboard" : "Get Started"}
                   </Link>
                 </Button>
               </div>

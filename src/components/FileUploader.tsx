@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef } from 'react';
 import { X, Upload, Camera, Home, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,17 @@ import { useToast } from '@/hooks/use-toast';
 import FileItem from '@/components/FileItem';
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { 
+  DropdownMenu, 
+  DropdownMenuTrigger, 
+  DropdownMenuContent, 
+  DropdownMenuItem 
+} from "@/components/ui/dropdown-menu";
+
+import axios from 'axios';
+
+// API base URL - change this to your Flask backend URL
+const API_URL = 'http://localhost:5000/api';
 
 type FileWithPreview = {
   file: File;
@@ -15,13 +25,33 @@ type FileWithPreview = {
   prompt?: string;
 };
 
+type BatchStatus = {
+  status: string;
+  job_details: Array<{
+    filename: string;
+    status: string;
+    progress: number;
+    error?: string;
+    video_url?: string;
+    job_id: string;
+  }>;
+};
+
+interface BatchResponse {
+  batch_id: string;
+}
+
 const FileUploader = () => {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [batchId, setBatchId] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [aspectRatio, setAspectRatio] = useState('16:9');
+  const [statusPolling, setStatusPolling] = useState<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toastShownRef = useRef(false);
   const { toast } = useToast();
 
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -109,9 +139,27 @@ const FileUploader = () => {
   const clearFiles = useCallback(() => {
     setFiles([]);
     setVideoUrl(null);
-  }, []);
+    setBatchId(null);
+    
+    // Stop polling if it's active
+    if (statusPolling) {
+      clearInterval(statusPolling);
+      setStatusPolling(null);
+    }
+    
+    setProgress(0);
+    toastShownRef.current = false;
+  }, [statusPolling]);
 
-  const mockApiCall = useCallback(() => {
+  // Function to stop polling
+  const stopPolling = useCallback(() => {
+    if (statusPolling) {
+      clearInterval(statusPolling);
+      setStatusPolling(null);
+    }
+  }, [statusPolling]);
+
+  const uploadFiles = useCallback(async () => {
     if (files.length === 0) {
       toast({
         title: "No files selected",
@@ -132,43 +180,166 @@ const FileUploader = () => {
       return;
     }
 
+    // Stop any existing polling
+    stopPolling();
+    
+    toastShownRef.current = false;
     setIsUploading(true);
     setProgress(0);
 
-    // Mock API call with progress updates
-    let progressValue = 0;
-    const interval = setInterval(() => {
-      progressValue += Math.random() * 10;
+    try {
+      const formData = new FormData();
+      const fileDetails = [];
+
+      files.forEach(fileObj => {
+        formData.append('files[]', fileObj.file);
+        fileDetails.push({
+          filename: fileObj.file.name,
+          prompt: fileObj.prompt
+        });
+      });
+
+      formData.append('aspect_ratio', aspectRatio);
+      formData.append('file_details', JSON.stringify(fileDetails));
+
+      const response = await axios.post<BatchResponse>(`${API_URL}/upload-batch`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setBatchId(response.data.batch_id);
       
-      if (progressValue >= 100) {
-        progressValue = 100;
-        clearInterval(interval);
+      // Start polling for status
+      const polling = setInterval(() => {
+        pollBatchStatus(response.data.batch_id);
+      }, 5000);
+      
+      setStatusPolling(polling);
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "There was an error uploading your files.",
+        variant: "destructive"
+      });
+      setIsUploading(false);
+    }
+  }, [files, toast, aspectRatio, stopPolling]);
+
+  const pollBatchStatus = async (batchId: string) => {
+    try {
+      const response = await axios.get<BatchStatus>(`${API_URL}/batch-status/${batchId}`);
+      const batchStatus = response.data.status;
+      
+      // Calculate overall progress
+      if (response.data.job_details && response.data.job_details.length > 0) {
+        const totalProgress = response.data.job_details.reduce((sum, job) => {
+          return sum + (job.progress || 0);
+        }, 0);
         
-        // Simulate API response delay
-        setTimeout(() => {
-          setIsUploading(false);
-          setVideoUrl('https://example.com/property-video.mp4');
-          toast({
-            title: "Property video created!",
-            description: "Your property tour video is ready to download",
-          });
-        }, 500);
+        const overallProgress = Math.round(totalProgress / response.data.job_details.length);
+        setProgress(overallProgress);
       }
       
-      setProgress(progressValue);
-    }, 500);
-  }, [files, toast]);
-
+      // Check if processing is complete or failed
+      const isFinished = [
+        'completed', 
+        'failed', 
+        'error', 
+        'partially_completed'
+      ].includes(batchStatus);
+      
+      // Stop polling if the process is finished
+      if (isFinished) {
+        stopPolling();
+        setIsUploading(false);
+        
+        // Show appropriate toast based on status
+        if (!toastShownRef.current) {
+          if (batchStatus === 'completed') {
+            toast({
+              title: "Property video created!",
+              description: "Your property tour video is ready to download",
+            });
+          } else if (batchStatus === 'failed' || batchStatus === 'error') {
+            toast({
+              title: "Processing failed",
+              description: "There was an error processing your video.",
+              variant: "destructive"
+            });
+          } else if (batchStatus === 'partially_completed') {
+            toast({
+              title: "Processing partially completed",
+              description: "Some videos were processed successfully, others failed.",
+            });
+          }
+          toastShownRef.current = true;
+        }
+      }
+    } catch (error) {
+      console.error('Status polling error:', error);
+      
+      // Show error toast only once
+      if (!toastShownRef.current) {
+        toast({
+          title: "Status check failed",
+          description: "Failed to check processing status.",
+          variant: "destructive"
+        });
+        toastShownRef.current = true;
+      }
+      
+      // Stop polling on error
+      stopPolling();
+      setIsUploading(false);
+    }
+  };
+  
   const downloadVideo = useCallback(() => {
-    // In a real app, this would trigger the actual file download
-    toast({
-      title: "Download started",
-      description: "Your property video will be downloaded shortly",
-    });
-  }, [toast]);
+    if (!batchId) return;
+    
+    // Redirect to download all endpoint
+    window.location.href = `${API_URL}/download-all/${batchId}`;
+  }, [batchId]);
+
+  // Cleanup interval on unmount
+  React.useEffect(() => {
+    return () => {
+      if (statusPolling) {
+        clearInterval(statusPolling);
+      }
+    };
+  }, [statusPolling]);
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
+    <div className="flex items-center space-x-4 mb-4">
+      <label htmlFor="aspect-ratio">Aspect Ratio:</label>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="rounded-md border p-2" disabled={isUploading}>
+            {aspectRatio}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem onSelect={() => setAspectRatio("16:9")}>
+            16:9 (Widescreen)
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setAspectRatio("4:3")}>
+            4:3 (Standard)
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setAspectRatio("1:1")}>
+            1:1 (Square)
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setAspectRatio("9:16")}>
+            9:16 (Vertical)
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+      
       <div
         className={`relative flex flex-col items-center justify-center w-full min-h-[300px] p-8 border-2 border-dashed rounded-xl transition-all ${
           isDragging ? 'border-primary bg-primary/5' : 'border-muted'
@@ -223,7 +394,7 @@ const FileUploader = () => {
                 <X className="mr-2 h-4 w-4" />
                 Clear All
               </Button>
-              {!videoUrl && (
+              {!videoUrl && !batchId && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -286,13 +457,13 @@ const FileUploader = () => {
               </div>
               <Progress value={progress} className="h-2" />
             </div>
-          ) : videoUrl ? (
+          ) : batchId ? (
             <Button className="w-full" onClick={downloadVideo}>
               <Download className="mr-2 h-4 w-4" />
-              Download Property Video
+              Download Property Videos
             </Button>
           ) : (
-            <Button className="w-full" onClick={mockApiCall}>
+            <Button className="w-full" onClick={uploadFiles}>
               <Home className="mr-2 h-4 w-4" />
               Create Property Video
             </Button>
