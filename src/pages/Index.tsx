@@ -2,7 +2,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import NavBar from '@/components/NavBar';
-import FileUploader from '@/components/FileUploader';
+// import FileUploader from '@/components/FileUploader';
+import FileUploader from '@/components/FileUploader/index';
 import { Button } from '@/components/ui/button';
 import FeedbackButton from '@/components/FeedbackButton';
 import { useAuth } from '@/context/AuthContext';
