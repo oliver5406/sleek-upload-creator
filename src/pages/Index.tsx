@@ -8,9 +8,23 @@ import { Button } from '@/components/ui/button';
 import FeedbackButton from '@/components/FeedbackButton';
 import { useAuth } from '@/context/AuthContext';
 import { Home, Video, Camera, MapPin } from 'lucide-react';
+import { useRef, useEffect } from "react";
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
+  const videoRef = useRef(null);
+
+  const AutoPlayVideo = () => {
+    
+    useEffect(() => {
+      // Autoplay video on mount
+      if (videoRef.current) {
+        videoRef.current.play().catch((error) => {
+          console.error("Autoplay failed:", error);
+        });
+      }
+    }, []);
+  }
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -34,9 +48,26 @@ const Index = () => {
                 </Button>
               </div>
             </div>
-            <div className="bg-muted rounded-xl p-6">
-              <FileUploader />
-            </div>
+            {/* <div className="bg-muted rounded-xl p-6"> */}
+              {/* <FileUploader /> */}
+              {/* <video controls className="w-full rounded-lg">
+                <source src="https://res.cloudinary.com/dx2l66jy7/video/upload/v1743613788/tvj3eogxokeunbg346v0.mp4" type="video/mp4" />
+                Your browser does not support the video tag.  
+                <a href="https://your-public-video-url.mp4" download>Download Video</a>
+            </video> */}
+            <video
+              ref={videoRef}
+              className="w-full rounded-lg cursor-pointer"
+              onClick={(e) => (e.target as HTMLVideoElement).play()} 
+              autoPlay
+              muted
+              playsInline
+              onError={(e) => console.error("Video loading error", e)}
+            >
+              <source src="https://res.cloudinary.com/dx2l66jy7/video/upload/v1743613788/tvj3eogxokeunbg346v0.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+            {/* </div> */}
           </div>
         </section>
         

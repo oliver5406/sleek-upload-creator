@@ -6,8 +6,7 @@ import { BatchResponse, BatchStatus, FileWithPreview } from '@/components/FileUp
 export const API_URL = 'http://localhost:5000/api';
 
 export const uploadBatch = async (
-  files: FileWithPreview[], 
-  aspectRatio: string
+  files: FileWithPreview[]
 ): Promise<BatchResponse> => {
   const formData = new FormData();
   const fileDetails = [];
@@ -20,7 +19,6 @@ export const uploadBatch = async (
     });
   });
 
-  formData.append('aspect_ratio', aspectRatio);
   formData.append('file_details', JSON.stringify(fileDetails));
 
   const response = await axios.post<BatchResponse>(

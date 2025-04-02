@@ -86,7 +86,7 @@ const FileUploader = () => {
     setProgress(0);
 
     try {
-      const response = await uploadBatch(files, aspectRatio);
+      const response = await uploadBatch(files);
       setBatchId(response.batch_id);
       
       // Start polling for status
@@ -187,11 +187,11 @@ const FileUploader = () => {
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
-      <AspectRatioSelector 
+      {/* <AspectRatioSelector 
         aspectRatio={aspectRatio}
         setAspectRatio={setAspectRatio}
         disabled={isUploading}
-      />
+      /> */}
       
       <FileDropZone 
         onFilesAdded={addFiles}
@@ -206,7 +206,6 @@ const FileUploader = () => {
         onClearAll={clearFiles}
         isUploading={isUploading}
         hasVideo={!!batchId}
-        onAddFiles={addFiles}
       />
 
       {files.length > 0 && (

@@ -12,7 +12,6 @@ interface FileListProps {
   onClearAll: () => void;
   isUploading: boolean;
   hasVideo: boolean;
-  onBrowseFiles: () => void; // Changed this prop to match original functionality
 }
 
 const FileList: React.FC<FileListProps> = ({ 
@@ -22,7 +21,6 @@ const FileList: React.FC<FileListProps> = ({
   onClearAll,
   isUploading,
   hasVideo,
-  onBrowseFiles
 }) => {
   if (files.length === 0) {
     return null;
