@@ -40,7 +40,7 @@ const Dashboard = () => {
           <TabsList className="mb-6">
             <TabsTrigger value="create">Create New Video</TabsTrigger>
             <TabsTrigger value="recent">Recent Videos</TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
+            {/* <TabsTrigger value="templates">Templates</TabsTrigger> */}
           </TabsList>
           
           <TabsContent value="create" className="space-y-6">

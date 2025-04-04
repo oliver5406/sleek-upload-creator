@@ -137,11 +137,11 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
 
 // Root Auth0 provider that wraps the application
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const domain = "dev-mg7w364v4f1mhd6j.us.auth0.com";
-  const clientId = "PEUWQKQys9i8USpAAGvOzaWPMnSAqWQn";
-  const redirectUri = "http://localhost:8080";
-  const audience = "https://dev-mg7w364v4f1mhd6j.us.auth0.com/api/v2/"; // Add this - represents your API identifier in Auth0
-
+  const domain = import.meta.env.VITE_AUTH0_DOMAIN;
+  const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
+  const redirectUri = import.meta.env.VITE_AUTH0_REDIRECT_URI;
+  const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
+  
   if (!domain || !clientId) {
     console.error('Auth0 configuration is missing. Please set REACT_APP_AUTH0_DOMAIN and REACT_APP_AUTH0_CLIENT_ID environment variables.');
     return <>{children}</>;
