@@ -108,7 +108,7 @@ const Index = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="bg-card p-6 rounded-lg shadow-sm">
                 <h3 className="text-xl font-semibold mb-2">Increased Engagement</h3>
-                <p className="text-muted-foreground">Video listings receive 403% more inquiries than properties without video tours.</p>
+                <p className="text-muted-foreground">Video listings receive more inquiries than properties without video tours.</p>
               </div>
               <div className="bg-card p-6 rounded-lg shadow-sm">
                 <h3 className="text-xl font-semibold mb-2">Save Time</h3>

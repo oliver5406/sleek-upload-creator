@@ -1,7 +1,7 @@
 // src/components/FileUploader/index.tsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-
+import { useAuth } from '@/context/AuthContext';  // Assuming the path is correct
 import FileDropZone from './FileDropZone';
 import FileList from './FileList';
 import AspectRatioSelector from './AspectRatioSelector';
@@ -17,6 +17,7 @@ const FileUploader = () => {
   const [aspectRatio, setAspectRatio] = useState('16:9');
   const [statusPolling, setStatusPolling] = useState<NodeJS.Timeout | null>(null);
   const toastShownRef = useRef(false);
+  const { token, getToken } = useAuth();
   const { toast } = useToast();
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
@@ -56,7 +57,7 @@ const FileUploader = () => {
       setStatusPolling(null);
     }
   }, [statusPolling]);
-
+  
   const uploadFiles = useCallback(async () => {
     if (files.length === 0) {
       toast({
@@ -66,7 +67,7 @@ const FileUploader = () => {
       });
       return;
     }
-
+  
     // Check if all files have prompts
     const missingPrompts = files.some(file => !file.prompt);
     if (missingPrompts) {
@@ -77,25 +78,41 @@ const FileUploader = () => {
       });
       return;
     }
-
+  
     // Stop any existing polling
     stopPolling();
-    
+  
     toastShownRef.current = false;
     setIsUploading(true);
     setProgress(0);
-
+  
     try {
-      const response = await uploadBatch(files);
-      setBatchId(response.batch_id);
+      // Get the token from the context
+      const token = await getToken();  // Call the getToken function to fetch the token
       
+      if (!token) {
+        // If token is not available, handle the error (e.g., user is not authenticated)
+        toast({
+          title: "Authentication failed",
+          description: "You are not authenticated. Please log in again.",
+          variant: "destructive"
+        });
+        setIsUploading(false);
+        return;
+      }
+  
+      // Pass the token to the API request
+      const response = await uploadBatch(files, token);  // Pass the token along with the files
+      
+      setBatchId(response.batch_id);
+  
       // Start polling for status
       const polling = setInterval(() => {
         pollBatchStatus(response.batch_id);
       }, 5000);
-      
+  
       setStatusPolling(polling);
-      
+  
     } catch (error) {
       console.error('Upload error:', error);
       toast({
@@ -105,11 +122,11 @@ const FileUploader = () => {
       });
       setIsUploading(false);
     }
-  }, [files, toast, aspectRatio, stopPolling]);
+  }, [files, toast, aspectRatio, stopPolling, getToken]);  
 
   const pollBatchStatus = async (batchId: string) => {
     try {
-      const batchStatus = await getBatchStatus(batchId);
+      const batchStatus = await getBatchStatus(batchId, token);
       const status = batchStatus.status;
       
       // Calculate overall progress
@@ -172,9 +189,35 @@ const FileUploader = () => {
   };
   
   const downloadVideo = useCallback(() => {
-    if (!batchId) return;
-    window.location.href = getDownloadUrl(batchId);
-  }, [batchId]);
+    if (!batchId || !token) return;
+  
+    const downloadUrl = getDownloadUrl(batchId);
+  
+    // Set token in request headers using a hidden link + fetch trick
+    fetch(downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Download failed');
+        return res.blob();
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `videos_${batchId}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(err => {
+        console.error('Download error:', err);
+      });
+  }, [batchId, token]);
+  
 
   // Cleanup interval on unmount
   useEffect(() => {
