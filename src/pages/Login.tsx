@@ -15,7 +15,7 @@ const Login = () => {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            Image to Video Converter
+          Propify
           </h1>
           <h2 className="mt-6 text-2xl font-semibold">Sign in to your account</h2>
         </div>

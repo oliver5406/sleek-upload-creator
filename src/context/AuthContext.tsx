@@ -9,7 +9,18 @@ interface User {
   email: string;
   name: string;
   picture?: string;
+  // Add metadata type
+  metadata?: {
+    profile?: {
+      fullName?: string;
+      phoneNumber?: string;
+      company?: string;
+      role?: string;
+      // Add other fields as needed
+    }
+  };
 }
+
 
 interface AuthContextType {
   user: User | null;
@@ -44,6 +55,7 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const navigate = useNavigate();
+  const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
 
   // Get and set the access token when authentication state changes
   useEffect(() => {
@@ -72,7 +84,10 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
         id: auth0User.sub || '',
         email: auth0User.email || '',
         name: auth0User.name || '',
-        picture: auth0User.picture
+        picture: auth0User.picture,
+        metadata: {
+          profile: auth0User[`${audience}/user_metadata`]?.profile // Access user metadata
+        }
       };
       setUser(userProfile);
       
@@ -85,6 +100,7 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
     }
   }, [auth0User, isAuthenticated, isLoading]);
+
 
   const logout = () => {
     clearAuthToken();

@@ -139,7 +139,7 @@ const Index = () => {
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="text-lg font-semibold mb-3">PropertyVideoMaker</h3>
+              <h3 className="text-lg font-semibold mb-3">Propify</h3>
               <p className="text-sm text-muted-foreground">
                 The ultimate tool for real estate professionals to create engaging property video tours.
               </p>
@@ -156,12 +156,12 @@ const Index = () => {
             <div>
               <h3 className="text-lg font-semibold mb-3">Contact</h3>
               <p className="text-sm text-muted-foreground">
-                For support or inquiries, reach out to our team at support@propertyvideomaker.com
+                For support or inquiries, reach out to our team at support@propify.com
               </p>
             </div>
           </div>
           <div className="mt-8 pt-6 border-t border-muted text-center text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} PropertyVideoMaker. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Propify. All rights reserved.</p>
           </div>
         </div>
       </footer>

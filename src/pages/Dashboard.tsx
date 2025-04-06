@@ -189,7 +189,7 @@ const Dashboard = () => {
       
       <footer className="py-6 border-t border-muted">
         <div className="container text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} PropertyVideoMaker. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Propify. All rights reserved.</p>
         </div>
       </footer>
     </div>
