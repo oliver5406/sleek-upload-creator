@@ -13,22 +13,13 @@ import { uploadBatch, getBatchStatus, getDownloadUrl } from '@/components/servic
 const STORAGE_KEY = 'fileUploader_state';
 
 const FileUploader = () => {
+  const { token, getToken } = useAuth();
+  const { toast } = useToast();
+  const toastShownRef = useRef(false);
+  const initialCheckDoneRef = useRef(false);
+
   // Initialize state from localStorage if available
-  const [files, setFiles] = useState<FileWithPreview[]>(() => {
-    const savedState = localStorage.getItem(STORAGE_KEY);
-    if (savedState) {
-      try {
-        const parsed = JSON.parse(savedState);
-        // Don't restore file objects as they can't be serialized properly
-        // We'll just restore the batchId to show the download button
-        return [];
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
-  
+  const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [batchId, setBatchId] = useState<string | null>(() => {
@@ -46,17 +37,16 @@ const FileUploader = () => {
   
   const [aspectRatio, setAspectRatio] = useState('16:9');
   const [statusPolling, setStatusPolling] = useState<NodeJS.Timeout | null>(null);
-  const toastShownRef = useRef(false);
-  const { token, getToken } = useAuth();
-  const { toast } = useToast();
+  const [processingComplete, setProcessingComplete] = useState(false);
 
   // Save state to localStorage whenever batchId changes
   useEffect(() => {
     const stateToSave = {
-      batchId
+      batchId,
+      processingComplete
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [batchId]);
+  }, [batchId, processingComplete]);
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
     setFiles(prev => [...prev, ...newFiles]);
@@ -77,6 +67,7 @@ const FileUploader = () => {
   const clearFiles = useCallback(() => {
     setFiles([]);
     setBatchId(null);
+    setProcessingComplete(false);
     
     // Clear local storage
     localStorage.removeItem(STORAGE_KEY);
@@ -89,6 +80,7 @@ const FileUploader = () => {
     
     setProgress(0);
     toastShownRef.current = false;
+    initialCheckDoneRef.current = true; // Prevent initial check after clearing
   }, [statusPolling]);
 
   // Function to stop polling
@@ -124,15 +116,15 @@ const FileUploader = () => {
     stopPolling();
   
     toastShownRef.current = false;
+    setProcessingComplete(false);
     setIsUploading(true);
     setProgress(0);
   
     try {
       // Get the token from the context
-      const token = await getToken();  // Call the getToken function to fetch the token
+      const token = await getToken();
       
       if (!token) {
-        // If token is not available, handle the error (e.g., user is not authenticated)
         toast({
           title: "Authentication failed",
           description: "You are not authenticated. Please log in again.",
@@ -143,7 +135,7 @@ const FileUploader = () => {
       }
   
       // Pass the token to the API request
-      const response = await uploadBatch(files, token);  // Pass the token along with the files
+      const response = await uploadBatch(files, token);
       
       setBatchId(response.batch_id);
   
@@ -163,10 +155,18 @@ const FileUploader = () => {
       });
       setIsUploading(false);
     }
-  }, [files, toast, aspectRatio, stopPolling, getToken]);  
+  }, [files, toast, stopPolling, getToken]);  
 
   const pollBatchStatus = async (batchId: string) => {
+    if (!batchId) return;
+    
     try {
+      const token = await getToken();
+      if (!token) {
+        console.error('No token available for status check');
+        return;
+      }
+
       const batchStatus = await getBatchStatus(batchId, token);
       const status = batchStatus.status;
       
@@ -187,6 +187,7 @@ const FileUploader = () => {
       if (isFinished) {
         stopPolling();
         setIsUploading(false);
+        setProcessingComplete(true);
         
         // Show appropriate toast based on status
         if (!toastShownRef.current) {
@@ -229,35 +230,59 @@ const FileUploader = () => {
     }
   };
   
-  const downloadVideo = useCallback(() => {
-    if (!batchId || !token) return;
+  const downloadVideo = useCallback(async () => {
+    if (!batchId) return;
   
-    const downloadUrl = getDownloadUrl(batchId);
-  
-    // Set token in request headers using a hidden link + fetch trick
-    fetch(downloadUrl, {
-      headers: {
-        'Authorization': `Bearer ${token}`
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast({
+          title: "Authentication failed",
+          description: "You are not authenticated. Please log in again.",
+          variant: "destructive"
+        });
+        return;
       }
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Download failed');
-        return res.blob();
+
+      const downloadUrl = getDownloadUrl(batchId);
+    
+      // Set token in request headers using a fetch
+      fetch(downloadUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       })
-      .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `videos_${batchId}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      })
-      .catch(err => {
-        console.error('Download error:', err);
+        .then(res => {
+          if (!res.ok) throw new Error('Download failed');
+          return res.blob();
+        })
+        .then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `videos_${batchId}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+        })
+        .catch(err => {
+          console.error('Download error:', err);
+          toast({
+            title: "Download failed",
+            description: "There was an error downloading your video.",
+            variant: "destructive"
+          });
+        });
+    } catch (error) {
+      console.error('Token retrieval error:', error);
+      toast({
+        title: "Authentication error",
+        description: "Failed to authenticate for download.",
+        variant: "destructive"
       });
-  }, [batchId, token]);
+    }
+  }, [batchId, getToken, toast]);
   
   // Cleanup interval on unmount
   useEffect(() => {
@@ -268,12 +293,33 @@ const FileUploader = () => {
     };
   }, [statusPolling]);
 
-  // If we have a batchId from localStorage but no files, check the status immediately
+  // Check status on initial load if we have a batchId from localStorage
   useEffect(() => {
-    if (batchId && files.length === 0 && !isUploading && !statusPolling) {
-      pollBatchStatus(batchId);
+    // Only run this once and if we have a batchId but no active polling
+    if (batchId && !initialCheckDoneRef.current && !statusPolling) {
+      initialCheckDoneRef.current = true;
+      
+      // Check if processing was already complete
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        try {
+          const parsed = JSON.parse(savedState);
+          setProcessingComplete(!!parsed.processingComplete);
+          
+          // Only start polling if processing wasn't complete
+          if (!parsed.processingComplete) {
+            setIsUploading(true);
+            pollBatchStatus(batchId);
+          }
+        } catch (e) {
+          console.error("Error parsing saved state", e);
+          pollBatchStatus(batchId);
+        }
+      } else {
+        pollBatchStatus(batchId);
+      }
     }
-  }, [batchId, files.length, isUploading, statusPolling]);
+  }, [batchId, statusPolling]);
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
@@ -283,20 +329,24 @@ const FileUploader = () => {
         disabled={isUploading}
       /> */}
       
-      <FileDropZone 
-        onFilesAdded={addFiles}
-        isUploading={isUploading}
-        hasFiles={files.length > 0}
-      />
+      {(!batchId || !processingComplete) && (
+        <FileDropZone 
+          onFilesAdded={addFiles}
+          isUploading={isUploading}
+          hasFiles={files.length > 0}
+        />
+      )}
 
-      <FileList 
-        files={files}
-        onRemoveFile={removeFile}
-        onUpdatePrompt={updateFilePrompt}
-        onClearAll={clearFiles}
-        isUploading={isUploading}
-        hasVideo={!!batchId}
-      />
+      {files.length > 0 && (
+        <FileList 
+          files={files}
+          onRemoveFile={removeFile}
+          onUpdatePrompt={updateFilePrompt}
+          onClearAll={clearFiles}
+          isUploading={isUploading}
+          hasVideo={!!batchId && processingComplete}
+        />
+      )}
 
       {(files.length > 0 || batchId) && (
         <UploadProgress 
