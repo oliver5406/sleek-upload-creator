@@ -1,7 +1,8 @@
+
 // src/components/FileUploader/index.tsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/AuthContext';  // Assuming the path is correct
+import { useAuth } from '@/context/AuthContext';
 import FileDropZone from './FileDropZone';
 import FileList from './FileList';
 import AspectRatioSelector from './AspectRatioSelector';
@@ -9,16 +10,53 @@ import UploadProgress from './UploadProgress';
 import { FileWithPreview } from './types';
 import { uploadBatch, getBatchStatus, getDownloadUrl } from '@/components/services/api';
 
+const STORAGE_KEY = 'fileUploader_state';
+
 const FileUploader = () => {
-  const [files, setFiles] = useState<FileWithPreview[]>([]);
+  // Initialize state from localStorage if available
+  const [files, setFiles] = useState<FileWithPreview[]>(() => {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        // Don't restore file objects as they can't be serialized properly
+        // We'll just restore the batchId to show the download button
+        return [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+  
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [batchId, setBatchId] = useState<string | null>(null);
+  const [batchId, setBatchId] = useState<string | null>(() => {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        return parsed.batchId || null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+  
   const [aspectRatio, setAspectRatio] = useState('16:9');
   const [statusPolling, setStatusPolling] = useState<NodeJS.Timeout | null>(null);
   const toastShownRef = useRef(false);
   const { token, getToken } = useAuth();
   const { toast } = useToast();
+
+  // Save state to localStorage whenever batchId changes
+  useEffect(() => {
+    const stateToSave = {
+      batchId
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+  }, [batchId]);
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
     setFiles(prev => [...prev, ...newFiles]);
@@ -39,6 +77,9 @@ const FileUploader = () => {
   const clearFiles = useCallback(() => {
     setFiles([]);
     setBatchId(null);
+    
+    // Clear local storage
+    localStorage.removeItem(STORAGE_KEY);
     
     // Stop polling if it's active
     if (statusPolling) {
@@ -218,7 +259,6 @@ const FileUploader = () => {
       });
   }, [batchId, token]);
   
-
   // Cleanup interval on unmount
   useEffect(() => {
     return () => {
@@ -227,6 +267,13 @@ const FileUploader = () => {
       }
     };
   }, [statusPolling]);
+
+  // If we have a batchId from localStorage but no files, check the status immediately
+  useEffect(() => {
+    if (batchId && files.length === 0 && !isUploading && !statusPolling) {
+      pollBatchStatus(batchId);
+    }
+  }, [batchId, files.length, isUploading, statusPolling]);
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
@@ -251,7 +298,7 @@ const FileUploader = () => {
         hasVideo={!!batchId}
       />
 
-      {files.length > 0 && (
+      {(files.length > 0 || batchId) && (
         <UploadProgress 
           isUploading={isUploading}
           progress={progress}
