@@ -8,49 +8,64 @@ const Progress = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & {
     isIndeterminate?: boolean;
   }
->(({ className, value, isIndeterminate = false, ...props }, ref) => (
-  <div className="relative w-full">
-    <ProgressPrimitive.Root
-      ref={ref}
-      className={cn(
-        "relative h-2 w-full overflow-hidden rounded-full bg-secondary",
-        className
-      )}
-      {...props}
-    >
-      {isIndeterminate ? (
-        <div className="w-full h-full">
-          <div 
-            className="absolute h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-bounce-x"
-            style={{ 
-              width: '30%', 
-              animation: 'bounce-x 1.5s infinite alternate' 
-            }}
-          />
-        </div>
-      ) : (
-        <ProgressPrimitive.Indicator
-          className="h-full w-full flex-1 bg-gradient-to-r from-blue-500 to-purple-500 transition-all"
-          style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
-        />
-      )}
-    </ProgressPrimitive.Root>
+>(({ className, value, isIndeterminate = false, ...props }, ref) => {
+  // Define keyframe animation for the bounce effect
+  React.useEffect(() => {
+    const styleSheet = document.styleSheets[0];
+    const animationName = "bounce-x";
+    
+    let keyframesExist = false;
+    for (let i = 0; i < styleSheet.cssRules.length; i++) {
+      if (
+        styleSheet.cssRules[i].type === CSSRule.KEYFRAMES_RULE &&
+        styleSheet.cssRules[i].name === animationName
+      ) {
+        keyframesExist = true;
+        break;
+      }
+    }
+    
+    if (!keyframesExist) {
+      styleSheet.insertRule(
+        `@keyframes ${animationName} {
+          0% { transform: translateX(0%); }
+          100% { transform: translateX(233%); }
+        }`,
+        styleSheet.cssRules.length
+      );
+    }
+  }, []);
 
-    <style jsx>{`
-      @keyframes bounce-x {
-        0% {
-          transform: translateX(0%);
-        }
-        100% {
-          transform: translateX(233%);
-        }
-      }
-      .animate-bounce-x {
-        animation: bounce-x 1.5s infinite alternate ease-in-out;
-      }
-    `}</style>
-  </div>
-))
+  return (
+    <div className="relative w-full">
+      <ProgressPrimitive.Root
+        ref={ref}
+        className={cn(
+          "relative h-2 w-full overflow-hidden rounded-full bg-secondary",
+          className
+        )}
+        {...props}
+      >
+        {isIndeterminate ? (
+          <div className="w-full h-full">
+            <div 
+              className="absolute h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"
+              style={{ 
+                width: '30%', 
+                animation: 'bounce-x 1.5s infinite alternate ease-in-out' 
+              }}
+            />
+          </div>
+        ) : (
+          <ProgressPrimitive.Indicator
+            className="h-full w-full flex-1 bg-gradient-to-r from-blue-500 to-purple-500 transition-all"
+            style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+          />
+        )}
+      </ProgressPrimitive.Root>
+    </div>
+  );
+})
 
 Progress.displayName = ProgressPrimitive.Root.displayName
 
