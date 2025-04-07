@@ -31,7 +31,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
           className="h-2"
         />
         <p className="text-xs text-muted-foreground text-center">
-          This may take a few minutes depending on the number of images
+          Do not leave the page, this may take a few minutes depending on the number of images
         </p>
       </div>
     );

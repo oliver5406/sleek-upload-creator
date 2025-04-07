@@ -1,9 +1,6 @@
 
-import React from 'react';
 import { Link } from 'react-router-dom';
 import NavBar from '@/components/NavBar';
-// import FileUploader from '@/components/FileUploader';
-import FileUploader from '@/components/FileUploader/index';
 import { Button } from '@/components/ui/button';
 import FeedbackButton from '@/components/FeedbackButton';
 import { useAuth } from '@/context/AuthContext';
@@ -48,13 +45,6 @@ const Index = () => {
                 </Button>
               </div>
             </div>
-            {/* <div className="bg-muted rounded-xl p-6"> */}
-              {/* <FileUploader /> */}
-              {/* <video controls className="w-full rounded-lg">
-                <source src="https://res.cloudinary.com/dx2l66jy7/video/upload/v1743613788/tvj3eogxokeunbg346v0.mp4" type="video/mp4" />
-                Your browser does not support the video tag.  
-                <a href="https://your-public-video-url.mp4" download>Download Video</a>
-            </video> */}
             <video
               ref={videoRef}
               className="w-full rounded-lg cursor-pointer"

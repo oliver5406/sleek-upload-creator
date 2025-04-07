@@ -4,7 +4,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';  // Assuming the path is correct
 import FileDropZone from './FileDropZone';
 import FileList from './FileList';
-import AspectRatioSelector from './AspectRatioSelector';
 import UploadProgress from './UploadProgress';
 import { FileWithPreview } from './types';
 import { uploadBatch, getBatchStatus, getDownloadUrl } from '@/components/services/api';
@@ -14,7 +13,6 @@ const FileUploader = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [batchId, setBatchId] = useState<string | null>(null);
-  const [aspectRatio, setAspectRatio] = useState('16:9');
   const [statusPolling, setStatusPolling] = useState<NodeJS.Timeout | null>(null);
   const toastShownRef = useRef(false);
   const { token, getToken } = useAuth();
@@ -122,7 +120,7 @@ const FileUploader = () => {
       });
       setIsUploading(false);
     }
-  }, [files, toast, aspectRatio, stopPolling, getToken]);  
+  }, [files, toast, stopPolling, getToken]);  
 
   const pollBatchStatus = async (batchId: string) => {
     try {
@@ -230,12 +228,6 @@ const FileUploader = () => {
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
-      {/* <AspectRatioSelector 
-        aspectRatio={aspectRatio}
-        setAspectRatio={setAspectRatio}
-        disabled={isUploading}
-      /> */}
-      
       <FileDropZone 
         onFilesAdded={addFiles}
         isUploading={isUploading}
