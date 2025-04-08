@@ -9,12 +9,14 @@ interface FileDropZoneProps {
   onFilesAdded: (files: FileWithPreview[]) => void;
   isUploading: boolean;
   hasFiles: boolean;
+  currentFileCount: number; // 🆕 ADD THIS
 }
 
 const FileDropZone: React.FC<FileDropZoneProps> = ({ 
   onFilesAdded, 
   isUploading, 
-  hasFiles
+  hasFiles,
+  currentFileCount // 🆕 RECEIVE THIS
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,42 +74,41 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
     setIsDragging(false);
 
     const files = e.dataTransfer.files;
-    if (files.length > 3) {
+    if (currentFileCount + files.length > 3) {
       toast({
         title: "Too many files",
-        description: "You can only upload a maximum of 3 images at once.",
+        description: "You can only upload a maximum of 3 images.",
         variant: "destructive"
       });
       return;
     }
 
     processFiles(files);
-  }, [processFiles, toast]);
+  }, [processFiles, toast, currentFileCount]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    if (files.length > 3) {
+    if (currentFileCount + files.length > 3) {
       toast({
         title: "Too many files",
-        description: "You can only upload a maximum of 3 images at once.",
+        description: "You can only upload a maximum of 3 images.",
         variant: "destructive"
       });
 
       if (fileInputRef.current) {
-        fileInputRef.current.value = ''; // reset input so user can try again
+        fileInputRef.current.value = '';
       }
       return;
     }
 
     processFiles(files);
 
-    // Reset the input value so the same file can be uploaded again if removed
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [processFiles, toast]);
+  }, [processFiles, toast, currentFileCount]);
 
   const handleBrowseFiles = () => {
     if (fileInputRef.current) {
