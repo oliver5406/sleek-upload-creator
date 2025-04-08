@@ -54,16 +54,6 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
         };
       });
 
-    // 🚨 NEW: Limit uploads to 3 images
-    if (newFilesArray.length > 3) {
-      toast({
-        title: "Too many files",
-        description: "You can only upload up to 3 images at once.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (newFilesArray.length === 0) {
       toast({
         title: "Invalid files",
@@ -80,25 +70,50 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    processFiles(e.dataTransfer.files);
-  }, [processFiles]);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 3) {
+      toast({
+        title: "Too many files",
+        description: "You can only upload a maximum of 3 images at once.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    processFiles(files);
+  }, [processFiles, toast]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    processFiles(e.target.files);
+    const files = e.target.files;
+    if (!files) return;
+
+    if (files.length > 3) {
+      toast({
+        title: "Too many files",
+        description: "You can only upload a maximum of 3 images at once.",
+        variant: "destructive"
+      });
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''; // reset input so user can try again
+      }
+      return;
+    }
+
+    processFiles(files);
+
     // Reset the input value so the same file can be uploaded again if removed
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [processFiles]);
+  }, [processFiles, toast]);
 
   const handleBrowseFiles = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
-
-  // Removed the conditional return for "Add More" button
-  // This component now solely serves as a drop zone
 
   return (
     <div
