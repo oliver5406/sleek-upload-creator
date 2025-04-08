@@ -18,7 +18,8 @@ const Progress = React.forwardRef<
     for (let i = 0; i < styleSheet.cssRules.length; i++) {
       if (
         styleSheet.cssRules[i].type === CSSRule.KEYFRAMES_RULE &&
-        styleSheet.cssRules[i].name === animationName
+        // Use type assertion since TypeScript doesn't recognize the name property
+        (styleSheet.cssRules[i] as CSSKeyframesRule).name === animationName
       ) {
         keyframesExist = true;
         break;
