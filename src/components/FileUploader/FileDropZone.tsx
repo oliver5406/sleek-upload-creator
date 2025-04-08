@@ -9,12 +9,14 @@ interface FileDropZoneProps {
   onFilesAdded: (files: FileWithPreview[]) => void;
   isUploading: boolean;
   hasFiles: boolean;
+  currentFileCount: number;
 }
 
 const FileDropZone: React.FC<FileDropZoneProps> = ({ 
   onFilesAdded, 
   isUploading, 
-  hasFiles
+  hasFiles,
+  currentFileCount
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +43,7 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
     if (!newFiles) return;
 
     const validImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/gif'];
-    
+
     const newFilesArray = Array.from(newFiles)
       .filter(file => validImageTypes.includes(file.type))
       .map(file => {
@@ -70,25 +72,55 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    processFiles(e.dataTransfer.files);
-  }, [processFiles]);
+
+    const files = e.dataTransfer.files;
+    console.log('currentFileCount (drop):', currentFileCount);
+    console.log('files.length (new dropped files):', files?.length);
+
+    if (currentFileCount + files.length > 3) {
+      toast({
+        title: "Too many files",
+        description: "You can only upload a maximum of 3 images.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    processFiles(files);
+  }, [processFiles, toast, currentFileCount]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    processFiles(e.target.files);
-    // Reset the input value so the same file can be uploaded again if removed
+    const files = e.target.files;
+    console.log('currentFileCount (browse):', currentFileCount);
+    console.log('files.length (new selected files):', files?.length);
+
+    if (!files) return;
+
+    if (currentFileCount + files.length > 3) {
+      toast({
+        title: "Too many files",
+        description: "You can only upload a maximum of 3 images.",
+        variant: "destructive"
+      });
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    processFiles(files);
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [processFiles]);
+  }, [processFiles, toast, currentFileCount]);
 
   const handleBrowseFiles = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
-
-  // Removed the conditional return for "Add More" button
-  // This component now solely serves as a drop zone
 
   return (
     <div

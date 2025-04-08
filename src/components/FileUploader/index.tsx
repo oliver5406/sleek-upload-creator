@@ -453,6 +453,7 @@ const FileUploader = () => {
         onFilesAdded={addFiles}
         isUploading={isUploading}
         hasFiles={files.length > 0}
+        currentFileCount={files.length} 
       />
 
       {files.length > 0 && (
