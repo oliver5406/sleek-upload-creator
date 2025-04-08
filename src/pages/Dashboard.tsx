@@ -1,18 +1,29 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import NavBar from '@/components/NavBar';
-// import FileUploader from '@/components/FileUploader';
 import FileUploader from '@/components/FileUploader/index';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Download, Play, History, Settings, Plus } from 'lucide-react';
 
+const DASHBOARD_TAB_KEY = 'dashboard_active_tab';
+
 const Dashboard = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  
+  // Initialize active tab from localStorage or default to 'create'
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem(DASHBOARD_TAB_KEY) || 'create';
+  });
+
+  // Save active tab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(DASHBOARD_TAB_KEY, activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -36,7 +47,10 @@ const Dashboard = () => {
           </p>
         </div>
         
-        <Tabs defaultValue="create">
+        <Tabs 
+          defaultValue={activeTab}
+          onValueChange={(value) => setActiveTab(value)}
+        >
           <TabsList className="mb-6">
             <TabsTrigger value="create">Create New Video</TabsTrigger>
             <TabsTrigger value="recent">Recent Videos</TabsTrigger>

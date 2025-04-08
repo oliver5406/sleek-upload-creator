@@ -23,11 +23,13 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
   if (isUploading) {
     return (
       <div className="space-y-4">
-        <div className="text-sm font-medium text-center">
-          Creating property video...
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Creating property video...</span>
+          <span className="text-sm font-medium">{progress ? `${Math.round(progress)}%` : 'Processing...'}</span>
         </div>
         <Progress 
-          isIndeterminate={true} 
+          value={progress || undefined}
+          isIndeterminate={!progress} 
           className="h-2"
         />
         <p className="text-xs text-muted-foreground text-center">

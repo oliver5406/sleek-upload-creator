@@ -17,36 +17,65 @@ const FileUploader = () => {
   const { toast } = useToast();
   const toastShownRef = useRef(false);
   const initialCheckDoneRef = useRef(false);
-
-  // Initialize state from localStorage if available
-  const [files, setFiles] = useState<FileWithPreview[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [batchId, setBatchId] = useState<string | null>(() => {
-    const savedState = localStorage.getItem(STORAGE_KEY);
-    if (savedState) {
-      try {
-        const parsed = JSON.parse(savedState);
-        return parsed.batchId || null;
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  });
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Initialize from localStorage if available
+  const getInitialState = () => {
+    try {
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        return {
+          batchId: parsedState.batchId || null,
+          processingComplete: parsedState.processingComplete || false,
+          files: parsedState.files || [],
+          progress: parsedState.progress || 0,
+        };
+      }
+    } catch (e) {
+      console.error('Error loading saved state:', e);
+    }
+    return {
+      batchId: null,
+      processingComplete: false,
+      files: [],
+      progress: 0,
+    };
+  };
+  
+  const initialState = getInitialState();
+  
+  const [files, setFiles] = useState<FileWithPreview[]>(initialState.files);
+  const [isUploading, setIsUploading] = useState(initialState.batchId !== null && !initialState.processingComplete);
+  const [progress, setProgress] = useState(initialState.progress);
+  const [batchId, setBatchId] = useState<string | null>(initialState.batchId);
+  const [processingComplete, setProcessingComplete] = useState(initialState.processingComplete);
   const [aspectRatio, setAspectRatio] = useState('16:9');
-  const [statusPolling, setStatusPolling] = useState<NodeJS.Timeout | null>(null);
-  const [processingComplete, setProcessingComplete] = useState(false);
 
-  // Save state to localStorage whenever batchId changes
+  // Use this ref to manage the interval instead of state to avoid re-renders
+  const statusPollingInterval = 5000; // 5 seconds
+
+  // Save state to localStorage whenever relevant state changes
   useEffect(() => {
     const stateToSave = {
       batchId,
-      processingComplete
+      processingComplete,
+      files,
+      progress,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [batchId, processingComplete]);
+  }, [batchId, processingComplete, files, progress]);
+
+  // Function to create file objects from saved data
+  const recreateFilesFromStorage = (savedFiles: any[]) => {
+    return savedFiles.map(fileData => ({
+      ...fileData,
+      file: new File([], fileData.file.name, { 
+        type: fileData.file.type,
+        lastModified: fileData.file.lastModified
+      })
+    }));
+  };
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
     setFiles(prev => [...prev, ...newFiles]);
@@ -73,23 +102,23 @@ const FileUploader = () => {
     localStorage.removeItem(STORAGE_KEY);
     
     // Stop polling if it's active
-    if (statusPolling) {
-      clearInterval(statusPolling);
-      setStatusPolling(null);
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
     }
     
     setProgress(0);
     toastShownRef.current = false;
     initialCheckDoneRef.current = true; // Prevent initial check after clearing
-  }, [statusPolling]);
+  }, []);
 
   // Function to stop polling
   const stopPolling = useCallback(() => {
-    if (statusPolling) {
-      clearInterval(statusPolling);
-      setStatusPolling(null);
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
     }
-  }, [statusPolling]);
+  }, []);
   
   const uploadFiles = useCallback(async () => {
     if (files.length === 0) {
@@ -139,12 +168,8 @@ const FileUploader = () => {
       
       setBatchId(response.batch_id);
   
-      // Start polling for status
-      const polling = setInterval(() => {
-        pollBatchStatus(response.batch_id);
-      }, 5000);
-  
-      setStatusPolling(polling);
+      // Start polling for status immediately
+      pollBatchStatus(response.batch_id);
   
     } catch (error) {
       console.error('Upload error:', error);
@@ -157,8 +182,8 @@ const FileUploader = () => {
     }
   }, [files, toast, stopPolling, getToken]);  
 
-  const pollBatchStatus = async (batchId: string) => {
-    if (!batchId) return;
+  const pollBatchStatus = useCallback(async (currentBatchId: string) => {
+    if (!currentBatchId) return;
     
     try {
       const token = await getToken();
@@ -167,7 +192,7 @@ const FileUploader = () => {
         return;
       }
 
-      const batchStatus = await getBatchStatus(batchId, token);
+      const batchStatus = await getBatchStatus(currentBatchId, token);
       const status = batchStatus.status;
       
       // Calculate overall progress
@@ -183,8 +208,8 @@ const FileUploader = () => {
       // Check if processing is complete or failed
       const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
       
-      // Stop polling if the process is finished
       if (isFinished) {
+        // Stop polling if the process is finished
         stopPolling();
         setIsUploading(false);
         setProcessingComplete(true);
@@ -210,6 +235,11 @@ const FileUploader = () => {
           }
           toastShownRef.current = true;
         }
+      } else {
+        // If processing is not finished, schedule another poll
+        pollTimeoutRef.current = setTimeout(() => {
+          pollBatchStatus(currentBatchId);
+        }, statusPollingInterval);
       }
     } catch (error) {
       console.error('Status polling error:', error);
@@ -228,7 +258,7 @@ const FileUploader = () => {
       stopPolling();
       setIsUploading(false);
     }
-  };
+  }, [getToken, stopPolling, toast]);
   
   const downloadVideo = useCallback(async () => {
     if (!batchId) return;
@@ -246,7 +276,13 @@ const FileUploader = () => {
 
       const downloadUrl = getDownloadUrl(batchId);
     
-      // Set token in request headers using a fetch
+      // Create a hidden anchor element for download
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', '');
+      link.setAttribute('target', '_blank');
+      
+      // Append custom headers through fetch API
       fetch(downloadUrl, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -258,13 +294,17 @@ const FileUploader = () => {
         })
         .then(blob => {
           const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `videos_${batchId}.zip`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
+          link.setAttribute('href', url);
+          link.setAttribute('download', `property_videos_${batchId}.zip`);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
           window.URL.revokeObjectURL(url);
+          
+          toast({
+            title: "Download started",
+            description: "Your property videos are being downloaded.",
+          });
         })
         .catch(err => {
           console.error('Download error:', err);
@@ -287,39 +327,24 @@ const FileUploader = () => {
   // Cleanup interval on unmount
   useEffect(() => {
     return () => {
-      if (statusPolling) {
-        clearInterval(statusPolling);
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
       }
     };
-  }, [statusPolling]);
+  }, []);
 
   // Check status on initial load if we have a batchId from localStorage
   useEffect(() => {
     // Only run this once and if we have a batchId but no active polling
-    if (batchId && !initialCheckDoneRef.current && !statusPolling) {
+    if (batchId && !initialCheckDoneRef.current && !pollTimeoutRef.current) {
       initialCheckDoneRef.current = true;
       
-      // Check if processing was already complete
-      const savedState = localStorage.getItem(STORAGE_KEY);
-      if (savedState) {
-        try {
-          const parsed = JSON.parse(savedState);
-          setProcessingComplete(!!parsed.processingComplete);
-          
-          // Only start polling if processing wasn't complete
-          if (!parsed.processingComplete) {
-            setIsUploading(true);
-            pollBatchStatus(batchId);
-          }
-        } catch (e) {
-          console.error("Error parsing saved state", e);
-          pollBatchStatus(batchId);
-        }
-      } else {
+      // Resume polling if processing wasn't complete
+      if (!processingComplete) {
         pollBatchStatus(batchId);
       }
     }
-  }, [batchId, statusPolling]);
+  }, [batchId, pollBatchStatus, processingComplete]);
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
