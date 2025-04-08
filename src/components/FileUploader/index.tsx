@@ -18,6 +18,7 @@ const FileUploader = () => {
   const toastShownRef = useRef(false);
   const initialCheckDoneRef = useRef(false);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [hasError, setHasError] = useState(false);
   
   // Initialize from localStorage if available
   const getInitialState = () => {
@@ -25,22 +26,37 @@ const FileUploader = () => {
       const savedState = localStorage.getItem(STORAGE_KEY);
       if (savedState) {
         const parsedState = JSON.parse(savedState);
-        return {
-          batchId: parsedState.batchId || null,
-          processingComplete: parsedState.processingComplete || false,
-          files: parsedState.files || [],
-          progress: parsedState.progress || 0,
-        };
+        
+        // Validate that we have a proper state
+        if (parsedState && 
+            typeof parsedState === 'object' && 
+            (parsedState.batchId || parsedState.files?.length > 0)) {
+          return {
+            batchId: parsedState.batchId || null,
+            processingComplete: parsedState.processingComplete || false,
+            files: Array.isArray(parsedState.files) ? parsedState.files : [],
+            progress: typeof parsedState.progress === 'number' ? parsedState.progress : 0,
+          };
+        }
       }
+      // If we get here, either there's no saved state or it's invalid
+      return {
+        batchId: null,
+        processingComplete: false,
+        files: [],
+        progress: 0,
+      };
     } catch (e) {
       console.error('Error loading saved state:', e);
+      // Clear potentially corrupt state
+      localStorage.removeItem(STORAGE_KEY);
+      return {
+        batchId: null,
+        processingComplete: false,
+        files: [],
+        progress: 0,
+      };
     }
-    return {
-      batchId: null,
-      processingComplete: false,
-      files: [],
-      progress: 0,
-    };
   };
   
   const initialState = getInitialState();
@@ -57,13 +73,19 @@ const FileUploader = () => {
 
   // Save state to localStorage whenever relevant state changes
   useEffect(() => {
-    const stateToSave = {
-      batchId,
-      processingComplete,
-      files,
-      progress,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    // Only save if we have meaningful state to save
+    if (batchId || files.length > 0) {
+      const stateToSave = {
+        batchId,
+        processingComplete,
+        files,
+        progress,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    } else {
+      // Clear localStorage if we have no state to save
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }, [batchId, processingComplete, files, progress]);
 
   // Function to create file objects from saved data
@@ -79,10 +101,23 @@ const FileUploader = () => {
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
     setFiles(prev => [...prev, ...newFiles]);
+    // Reset any error state when new files are added
+    setHasError(false);
   }, []);
 
   const removeFile = useCallback((id: string) => {
-    setFiles(prev => prev.filter(file => file.id !== id));
+    setFiles(prev => {
+      const updatedFiles = prev.filter(file => file.id !== id);
+      // If removing the last file, also clear batch state
+      if (updatedFiles.length === 0) {
+        setBatchId(null);
+        setProcessingComplete(false);
+        setProgress(0);
+        setHasError(false);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+      return updatedFiles;
+    });
   }, []);
 
   const updateFilePrompt = useCallback((id: string, prompt: string) => {
@@ -97,6 +132,7 @@ const FileUploader = () => {
     setFiles([]);
     setBatchId(null);
     setProcessingComplete(false);
+    setHasError(false);
     
     // Clear local storage
     localStorage.removeItem(STORAGE_KEY);
@@ -146,6 +182,7 @@ const FileUploader = () => {
   
     toastShownRef.current = false;
     setProcessingComplete(false);
+    setHasError(false);
     setIsUploading(true);
     setProgress(0);
   
@@ -179,6 +216,7 @@ const FileUploader = () => {
         variant: "destructive"
       });
       setIsUploading(false);
+      setHasError(true);
     }
   }, [files, toast, stopPolling, getToken]);  
 
@@ -189,6 +227,8 @@ const FileUploader = () => {
       const token = await getToken();
       if (!token) {
         console.error('No token available for status check');
+        setHasError(true);
+        setIsUploading(false);
         return;
       }
 
@@ -204,6 +244,9 @@ const FileUploader = () => {
         const overallProgress = Math.round(totalProgress / batchStatus.job_details.length);
         setProgress(overallProgress);
       }
+      
+      // Clear error state since we got a successful response
+      setHasError(false);
       
       // Check if processing is complete or failed
       const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
@@ -243,6 +286,9 @@ const FileUploader = () => {
       }
     } catch (error) {
       console.error('Status polling error:', error);
+      
+      // Set error state
+      setHasError(true);
       
       // Show error toast only once
       if (!toastShownRef.current) {
@@ -308,6 +354,7 @@ const FileUploader = () => {
         })
         .catch(err => {
           console.error('Download error:', err);
+          setHasError(true);
           toast({
             title: "Download failed",
             description: "There was an error downloading your video.",
@@ -316,6 +363,7 @@ const FileUploader = () => {
         });
     } catch (error) {
       console.error('Token retrieval error:', error);
+      setHasError(true);
       toast({
         title: "Authentication error",
         description: "Failed to authenticate for download.",
@@ -332,6 +380,35 @@ const FileUploader = () => {
       }
     };
   }, []);
+
+  // Validate saved state on mount
+  useEffect(() => {
+    // If we have a batchId from localStorage but no files, the state might be invalid
+    if (batchId && files.length === 0) {
+      const validateSavedState = async () => {
+        try {
+          const token = await getToken();
+          if (!token) {
+            clearFiles(); // Clear invalid state if no token
+            return;
+          }
+          
+          // Try to fetch the batch status to verify it exists
+          const batchStatus = await getBatchStatus(batchId, token);
+          if (!batchStatus || !batchStatus.status) {
+            // If the batch doesn't exist or has no status, clear the saved state
+            clearFiles();
+          }
+        } catch (error) {
+          console.error('Error validating saved state:', error);
+          // If we can't verify the batch status, clear the saved state but mark as error
+          setHasError(true);
+        }
+      };
+      
+      validateSavedState();
+    }
+  }, [batchId, files.length, getToken, clearFiles, getBatchStatus]);
 
   // Check status on initial load if we have a batchId from localStorage
   useEffect(() => {
@@ -354,7 +431,8 @@ const FileUploader = () => {
         disabled={isUploading}
       /> */}
       
-      {(!batchId || !processingComplete) && (
+      {/* Show file drop zone if we don't have a successful batch or if there was an error */}
+      {((!batchId || !processingComplete || hasError) && files.length === 0) && (
         <FileDropZone 
           onFilesAdded={addFiles}
           isUploading={isUploading}
@@ -380,6 +458,7 @@ const FileUploader = () => {
           batchId={batchId}
           onDownload={downloadVideo}
           onUpload={uploadFiles}
+          hasError={hasError}
         />
       )}
     </div>
