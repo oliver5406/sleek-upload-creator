@@ -9,14 +9,14 @@ interface FileDropZoneProps {
   onFilesAdded: (files: FileWithPreview[]) => void;
   isUploading: boolean;
   hasFiles: boolean;
-  currentFileCount: number; // 🆕 ADD THIS
+  currentFileCount: number;
 }
 
 const FileDropZone: React.FC<FileDropZoneProps> = ({ 
   onFilesAdded, 
   isUploading, 
   hasFiles,
-  currentFileCount // 🆕 RECEIVE THIS
+  currentFileCount
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,6 +74,9 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
     setIsDragging(false);
 
     const files = e.dataTransfer.files;
+    console.log('currentFileCount (drop):', currentFileCount);
+    console.log('files.length (new dropped files):', files?.length);
+
     if (currentFileCount + files.length > 3) {
       toast({
         title: "Too many files",
@@ -88,6 +91,9 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
+    console.log('currentFileCount (browse):', currentFileCount);
+    console.log('files.length (new selected files):', files?.length);
+
     if (!files) return;
 
     if (currentFileCount + files.length > 3) {
