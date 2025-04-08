@@ -3,7 +3,7 @@ import axios from 'axios';
 import { BatchResponse, BatchStatus, FileWithPreview } from '@/components/FileUploader/types';
 
 // API base URL - change this to your Flask backend URL
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Create an axios instance
 const apiClient = axios.create({
