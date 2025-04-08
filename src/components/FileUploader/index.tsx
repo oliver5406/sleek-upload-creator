@@ -1,4 +1,3 @@
-
 // src/components/FileUploader/index.tsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +18,7 @@ const FileUploader = () => {
   const initialCheckDoneRef = useRef(false);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [hasError, setHasError] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   
   // Initialize from localStorage if available
   const getInitialState = () => {
@@ -62,7 +62,7 @@ const FileUploader = () => {
   const initialState = getInitialState();
   
   const [files, setFiles] = useState<FileWithPreview[]>(initialState.files);
-  const [isUploading, setIsUploading] = useState(initialState.batchId !== null && !initialState.processingComplete);
+  const [isUploading, setIsUploading] = useState(false); // Start with false until validation
   const [progress, setProgress] = useState(initialState.progress);
   const [batchId, setBatchId] = useState<string | null>(initialState.batchId);
   const [processingComplete, setProcessingComplete] = useState(initialState.processingComplete);
@@ -303,6 +303,9 @@ const FileUploader = () => {
       // Stop polling on error
       stopPolling();
       setIsUploading(false);
+    } finally {
+      // Make sure we're done with initial loading
+      setInitialLoading(false);
     }
   }, [getToken, stopPolling, toast]);
   
@@ -381,85 +384,116 @@ const FileUploader = () => {
     };
   }, []);
 
-  // Validate saved state on mount
+  // Validate saved state on mount - improved version
   useEffect(() => {
-    // If we have a batchId from localStorage but no files, the state might be invalid
-    if (batchId && files.length === 0) {
-      const validateSavedState = async () => {
-        try {
-          const token = await getToken();
-          if (!token) {
-            clearFiles(); // Clear invalid state if no token
-            return;
-          }
-          
-          // Try to fetch the batch status to verify it exists
-          const batchStatus = await getBatchStatus(batchId, token);
-          if (!batchStatus || !batchStatus.status) {
-            // If the batch doesn't exist or has no status, clear the saved state
-            clearFiles();
-          }
-        } catch (error) {
-          console.error('Error validating saved state:', error);
-          // If we can't verify the batch status, clear the saved state but mark as error
-          setHasError(true);
+    const validateSavedState = async () => {
+      try {
+        // If we have no batchId, we're definitely not uploading
+        if (!batchId) {
+          setIsUploading(false);
+          setInitialLoading(false);
+          return;
         }
-      };
-      
-      validateSavedState();
-    }
-  }, [batchId, files.length, getToken, clearFiles, getBatchStatus]);
-
-  // Check status on initial load if we have a batchId from localStorage
-  useEffect(() => {
-    // Only run this once and if we have a batchId but no active polling
-    if (batchId && !initialCheckDoneRef.current && !pollTimeoutRef.current) {
-      initialCheckDoneRef.current = true;
-      
-      // Resume polling if processing wasn't complete
-      if (!processingComplete) {
-        pollBatchStatus(batchId);
+        
+        const token = await getToken();
+        if (!token) {
+          clearFiles(); // Clear invalid state if no token
+          setInitialLoading(false);
+          return;
+        }
+        
+        // Try to fetch the batch status to verify it exists
+        const batchStatus = await getBatchStatus(batchId, token);
+        
+        if (!batchStatus || !batchStatus.status) {
+          // If the batch doesn't exist or has no status, clear the saved state
+          clearFiles();
+          setInitialLoading(false);
+          return;
+        }
+        
+        // Set uploading status based on batch status
+        const status = batchStatus.status;
+        const isProcessing = ['queued', 'processing', 'started'].includes(status);
+        setIsUploading(isProcessing);
+        
+        // Calculate progress if available
+        if (batchStatus.job_details && batchStatus.job_details.length > 0) {
+          const totalProgress = batchStatus.job_details.reduce((sum, job) => {
+            return sum + (job.progress || 0);
+          }, 0);
+          
+          const overallProgress = Math.round(totalProgress / batchStatus.job_details.length);
+          setProgress(overallProgress);
+        }
+        
+        // Check if processing is complete or failed
+        const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
+        if (isFinished) {
+          setProcessingComplete(true);
+        } else if (isProcessing && !pollTimeoutRef.current) {
+          // If still processing but no active polling, start polling
+          pollBatchStatus(batchId);
+        }
+      } catch (error) {
+        console.error('Error validating saved state:', error);
+        // If we can't verify the batch status, mark as error but keep the state
+        setHasError(true);
+        setIsUploading(false);
+      } finally {
+        setInitialLoading(false);
       }
-    }
-  }, [batchId, pollBatchStatus, processingComplete]);
+    };
+    
+    validateSavedState();
+  }, [batchId, getToken, clearFiles, pollBatchStatus]);
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
-      {/* <AspectRatioSelector 
-        aspectRatio={aspectRatio}
-        setAspectRatio={setAspectRatio}
-        disabled={isUploading}
-      /> */}
-      
-      {/* Show file drop zone if we don't have a successful batch or if there was an error */}
-      {((!batchId || !processingComplete || hasError) && files.length === 0) && (
-        <FileDropZone 
-          onFilesAdded={addFiles}
-          isUploading={isUploading}
-          hasFiles={files.length > 0}
-        />
-      )}
+      {initialLoading ? (
+        <div className="text-center py-8">
+          <div className="h-6 w-6 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <p className="text-sm text-muted-foreground">Loading video status...</p>
+        </div>
+      ) : (
+        <>
+          {/* <AspectRatioSelector 
+            aspectRatio={aspectRatio}
+            setAspectRatio={setAspectRatio}
+            disabled={isUploading}
+          /> */}
+          
+          {/* Show file drop zone if we don't have a successful batch or if there was an error */}
+          {((!batchId || !processingComplete || hasError) && files.length === 0) && (
+            <FileDropZone 
+              onFilesAdded={addFiles}
+              isUploading={isUploading}
+              hasFiles={files.length > 0}
+            />
+          )}
 
-      {files.length > 0 && (
-        <FileList 
-          files={files}
-          onRemoveFile={removeFile}
-          onUpdatePrompt={updateFilePrompt}
-          onClearAll={clearFiles}
-          isUploading={isUploading}
-          hasVideo={!!batchId && processingComplete}
-        />
-      )}
+          {files.length > 0 && (
+            <FileList 
+              files={files}
+              onRemoveFile={removeFile}
+              onUpdatePrompt={updateFilePrompt}
+              onClearAll={clearFiles}
+              isUploading={isUploading}
+              hasVideo={!!batchId && processingComplete}
+            />
+          )}
 
-      {(files.length > 0 || batchId) && (
-        <UploadProgress 
-          isUploading={isUploading}
-          progress={progress}
-          batchId={batchId}
-          onDownload={downloadVideo}
-          onUpload={uploadFiles}
-          hasError={hasError}
-        />
+          {(files.length > 0 || batchId) && (
+            <UploadProgress 
+              isUploading={isUploading}
+              progress={progress}
+              batchId={batchId}
+              onDownload={downloadVideo}
+              onUpload={uploadFiles}
+              hasError={hasError}
+            />
+          )}
+        </>
       )}
     </div>
   );
