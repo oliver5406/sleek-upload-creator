@@ -41,7 +41,7 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
     if (!newFiles) return;
 
     const validImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/gif'];
-    
+
     const newFilesArray = Array.from(newFiles)
       .filter(file => validImageTypes.includes(file.type))
       .map(file => {
@@ -53,6 +53,16 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
           prompt: ''
         };
       });
+
+    // 🚨 NEW: Limit uploads to 3 images
+    if (newFilesArray.length > 3) {
+      toast({
+        title: "Too many files",
+        description: "You can only upload up to 3 images at once.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     if (newFilesArray.length === 0) {
       toast({
