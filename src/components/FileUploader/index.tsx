@@ -7,6 +7,7 @@ import FileList from './FileList';
 import UploadProgress from './UploadProgress';
 import { FileWithPreview } from './types';
 import { uploadBatch, getBatchStatus, getDownloadUrl } from '@/components/services/api';
+import { Skeleton } from '@/components/ui/skeleton'; // Make sure you have this component
 
 const STORAGE_KEY = 'fileUploader_state';
 
@@ -59,12 +60,12 @@ const FileUploader = () => {
   const initialState = getInitialState();
   
   const [files, setFiles] = useState<FileWithPreview[]>(initialState.files);
-  const [isUploading, setIsUploading] = useState(false); // Start with false until validation
+  const [isUploading, setIsUploading] = useState(false); // Start with false and determine during validation
   const [progress, setProgress] = useState(initialState.progress);
   const [batchId, setBatchId] = useState<string | null>(initialState.batchId);
   const [processingComplete, setProcessingComplete] = useState(initialState.processingComplete);
   const [hasError, setHasError] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(!!initialState.batchId); // Only set to loading if we have a batchId to validate
   const [aspectRatio, setAspectRatio] = useState('16:9');
 
   // Use this ref to manage the interval instead of state to avoid re-renders
@@ -86,17 +87,6 @@ const FileUploader = () => {
       localStorage.removeItem(STORAGE_KEY);
     }
   }, [batchId, processingComplete, files, progress]);
-
-  // Function to create file objects from saved data
-  const recreateFilesFromStorage = (savedFiles: any[]) => {
-    return savedFiles.map(fileData => ({
-      ...fileData,
-      file: new File([], fileData.file.name, { 
-        type: fileData.file.type,
-        lastModified: fileData.file.lastModified
-      })
-    }));
-  };
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
     setFiles(prev => [...prev, ...newFiles]);
@@ -143,8 +133,10 @@ const FileUploader = () => {
     }
     
     setProgress(0);
+    setIsUploading(false);
     toastShownRef.current = false;
     initialCheckDoneRef.current = true; // Prevent initial check after clearing
+    setInitialLoading(false); // Ensure we're not in loading state
   }, []);
 
   // Function to stop polling
@@ -202,10 +194,13 @@ const FileUploader = () => {
       // Pass the token to the API request
       const response = await uploadBatch(files, token);
       
-      setBatchId(response.batch_id);
-  
-      // Start polling for status immediately
-      pollBatchStatus(response.batch_id);
+      if (response && response.batch_id) {
+        setBatchId(response.batch_id);
+        // Start polling for status immediately
+        pollBatchStatus(response.batch_id);
+      } else {
+        throw new Error("No batch ID returned from upload");
+      }
   
     } catch (error) {
       console.error('Upload error:', error);
@@ -232,6 +227,11 @@ const FileUploader = () => {
       }
 
       const batchStatus = await getBatchStatus(currentBatchId, token);
+      
+      if (!batchStatus) {
+        throw new Error("Failed to get batch status");
+      }
+      
       const status = batchStatus.status;
       
       // Calculate overall progress
@@ -324,6 +324,10 @@ const FileUploader = () => {
 
       const downloadUrl = getDownloadUrl(batchId);
     
+      toast({
+        title: "Download started",
+        description: "Your property videos are being downloaded.",
+      });
       // Create a hidden anchor element for download
       const link = document.createElement('a');
       link.href = downloadUrl;
@@ -349,10 +353,6 @@ const FileUploader = () => {
           link.remove();
           window.URL.revokeObjectURL(url);
           
-          toast({
-            title: "Download started",
-            description: "Your property videos are being downloaded.",
-          });
         })
         .catch(err => {
           console.error('Download error:', err);
@@ -397,7 +397,6 @@ const FileUploader = () => {
         const token = await getToken();
         if (!token) {
           clearFiles(); // Clear invalid state if no token
-          setInitialLoading(false);
           return;
         }
         
@@ -407,7 +406,6 @@ const FileUploader = () => {
         if (!batchStatus || !batchStatus.status) {
           // If the batch doesn't exist or has no status, clear the saved state
           clearFiles();
-          setInitialLoading(false);
           return;
         }
         
@@ -430,6 +428,7 @@ const FileUploader = () => {
         const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
         if (isFinished) {
           setProcessingComplete(true);
+          setIsUploading(false);
         } else if (isProcessing && !pollTimeoutRef.current) {
           // If still processing but no active polling, start polling
           pollBatchStatus(batchId);
@@ -444,8 +443,27 @@ const FileUploader = () => {
       }
     };
     
-    validateSavedState();
+    // If we have a batchId, we need to validate
+    if (batchId) {
+      validateSavedState();
+    } else {
+      setInitialLoading(false);
+    }
   }, [batchId, getToken, clearFiles, pollBatchStatus]);
+
+  // Show loading skeleton while initializing
+  if (initialLoading) {
+    return (
+      <div className="w-full max-w-3xl mx-auto space-y-8">
+        <Skeleton className="h-40 w-full rounded-md" />
+        <div className="space-y-4">
+          <Skeleton className="h-6 w-3/4" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
