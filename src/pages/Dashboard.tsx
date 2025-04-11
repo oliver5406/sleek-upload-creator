@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -30,7 +29,6 @@ import * as z from "zod";
 
 const DASHBOARD_TAB_KEY = 'dashboard_active_tab';
 
-// Define the form schema for the image settings
 const imageSettingsSchema = z.object({
   context: z.enum(["single", "multi"]),
   time: z.number().min(1).max(60),
@@ -42,7 +40,6 @@ const imageSettingsSchema = z.object({
 
 type ImageSettingsFormValues = z.infer<typeof imageSettingsSchema>;
 
-// Sample prompts for the dropdown
 const SAMPLE_PROMPTS = [
   "Modern luxury home interior",
   "Spacious open concept kitchen",
@@ -56,15 +53,12 @@ const Dashboard = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   
-  // Initialize active tab from localStorage or default to 'create'
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem(DASHBOARD_TAB_KEY) || 'create';
   });
 
-  // State to check if the floating menu is open on mobile
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  // Form for the image settings
   const form = useForm<ImageSettingsFormValues>({
     resolver: zodResolver(imageSettingsSchema),
     defaultValues: {
@@ -77,11 +71,9 @@ const Dashboard = () => {
     },
   });
 
-  // Watch for context changes to update the UI
   const currentContext = form.watch("context");
   const useUniformSettings = form.watch("useUniformSettings");
 
-  // Save active tab to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(DASHBOARD_TAB_KEY, activeTab);
   }, [activeTab]);
@@ -119,7 +111,6 @@ const Dashboard = () => {
           
           <TabsContent value="create" className="space-y-6">
             <div className="flex flex-col md:flex-row gap-6 relative">
-              {/* Mobile toggle for settings panel */}
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -130,7 +121,6 @@ const Dashboard = () => {
                 {isMenuOpen ? 'Hide Settings' : 'Show Settings'}
               </Button>
               
-              {/* Floating menu (Settings Panel) */}
               <div className={`
                 md:w-80 bg-card rounded-lg border shadow-sm p-4
                 ${isMenuOpen ? 'block' : 'hidden md:block'}
@@ -138,7 +128,6 @@ const Dashboard = () => {
               `}>
                 <Form {...form}>
                   <div className="space-y-6">
-                    {/* Context Switcher */}
                     <div className="flex items-center justify-center gap-2 mb-4">
                       <Button
                         type="button"
@@ -163,7 +152,6 @@ const Dashboard = () => {
                     </div>
 
                     <div className="space-y-4">
-                      {/* Context specific settings */}
                       {currentContext === "single" ? (
                         <>
                           <FormField
@@ -383,19 +371,14 @@ const Dashboard = () => {
                 </Form>
               </div>
               
-              {/* File Uploader Area */}
               <div className="flex-1">
-                <FileUploader 
-                  settingsContext={currentContext}
-                  useUniformSettings={useUniformSettings}
-                />
+                <FileUploader />
               </div>
             </div>
           </TabsContent>
           
           <TabsContent value="recent">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {/* Sample recent videos - these would be dynamically populated */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle>123 Main Street</CardTitle>
