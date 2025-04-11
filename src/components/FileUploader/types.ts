@@ -1,12 +1,13 @@
+
 // src/components/FileUploader/types.ts
 export type FileWithPreview = {
     file: File;
     id: string;
     preview: string;
     prompt?: string;
-  };
+};
   
-  export type BatchStatus = {
+export type BatchStatus = {
     status: string;
     job_details: Array<{
       filename: string;
@@ -16,8 +17,13 @@ export type FileWithPreview = {
       video_url?: string;
       job_id: string;
     }>;
-  };
+};
   
-  export interface BatchResponse {
+export interface BatchResponse {
     batch_id: string;
-  }
+}
+
+export interface FileUploaderProps {
+    settingsContext?: "single" | "multi";
+    useUniformSettings?: boolean;
+}

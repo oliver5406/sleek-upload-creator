@@ -1,3 +1,4 @@
+
 // src/components/FileUploader/index.tsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -5,13 +6,13 @@ import { useAuth } from '@/context/AuthContext';
 import FileDropZone from './FileDropZone';
 import FileList from './FileList';
 import UploadProgress from './UploadProgress';
-import { FileWithPreview } from './types';
+import { FileWithPreview, FileUploaderProps } from './types';
 import { uploadBatch, getBatchStatus, getDownloadUrl } from '@/components/services/api';
 import { Skeleton } from '@/components/ui/skeleton'; // Make sure you have this component
 
 const STORAGE_KEY = 'fileUploader_state';
 
-const FileUploader = () => {
+const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniformSettings }) => {
   const { toast } = useToast();
   const { getToken } = useAuth();
   const toastShownRef = useRef(false);
@@ -465,6 +466,10 @@ const FileUploader = () => {
     );
   }
 
+  // We can now use settingsContext and useUniformSettings props if needed
+  // For now, we're just accepting them but not using them directly
+  // They could be used to modify FileUploader behavior based on the settings context
+
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
       <FileDropZone 
@@ -482,6 +487,9 @@ const FileUploader = () => {
           onClearAll={clearFiles}
           isUploading={isUploading}
           hasVideo={!!batchId && processingComplete}
+          // If we need to modify FileList behavior based on settings:
+          // settingsContext={settingsContext}
+          // useUniformSettings={useUniformSettings}
         />
       )}
 
@@ -497,6 +505,12 @@ const FileUploader = () => {
       )}
     </div>
   );
+};
+
+// Set default props
+FileUploader.defaultProps = {
+  settingsContext: "single",
+  useUniformSettings: true
 };
 
 export default FileUploader;

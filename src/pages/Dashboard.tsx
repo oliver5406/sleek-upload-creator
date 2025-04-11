@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -372,7 +373,10 @@ const Dashboard = () => {
               </div>
               
               <div className="flex-1">
-                <FileUploader />
+                <FileUploader 
+                  settingsContext={currentContext} 
+                  useUniformSettings={useUniformSettings} 
+                />
               </div>
             </div>
           </TabsContent>
