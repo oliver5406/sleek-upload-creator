@@ -49,10 +49,10 @@ const FileItem: React.FC<FileItemProps> = ({
       
       {showPromptField && (
         <div className="flex flex-col h-full">
-          <Label htmlFor={`prompt-${file.id}`} className="mb-2">Image Description</Label>
+          <Label htmlFor={`prompt-${file.id}`} className="mb-2">Prompt</Label>
           <Textarea 
             id={`prompt-${file.id}`}
-            placeholder="Describe this image or provide details about what you want to highlight (e.g., 'Spacious living room with natural light and modern furniture')"
+            placeholder="Generate a smooth, dynamic video with natural motion"
             value={file.prompt}
             onChange={(e) => onPromptChange(file.id, e.target.value)}
             className="flex-grow resize-none"

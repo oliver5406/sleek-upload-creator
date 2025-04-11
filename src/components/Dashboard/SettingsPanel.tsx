@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Clock, ListFilter, SlidersHorizontal, Settings, ImageIcon, Images } from 'lucide-react';
 import { useForm } from "react-hook-form";
@@ -36,14 +35,16 @@ const imageSettingsSchema = z.object({
 
 type ImageSettingsFormValues = z.infer<typeof imageSettingsSchema>;
 
-// Sample prompts
+// Sample generic property video generation prompts
 const SAMPLE_PROMPTS = [
-  "Modern luxury home interior",
-  "Spacious open concept kitchen",
-  "Cozy living room with fireplace",
-  "Elegant master bedroom suite",
-  "Beautiful garden landscape",
-  "Swimming pool with patio area",
+  "Gentle camera movement across the room",
+  "Slow reveal of the property",
+  "Smooth indoor-to-outdoor transition",
+  "Gradual zoom highlighting key features",
+  "Soft panning motion showing the space",
+  "Subtle movement through the interior",
+  "Flowing camera path around the exterior",
+  "Natural lighting transition throughout the day",
 ];
 
 interface SettingsPanelProps {
