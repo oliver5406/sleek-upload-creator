@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import FileUploader from '@/components/FileUploader/index';
@@ -10,6 +10,7 @@ const CreateContent: React.FC = () => {
   const [settings, setSettings] = useState<ImageSettingsFormValues>({
     context: "single",
     time: 5,
+    promptSource: "preset",
     prompt: "Modern luxury home interior",
     cfg: 0.7,
     useUniformSettings: true,

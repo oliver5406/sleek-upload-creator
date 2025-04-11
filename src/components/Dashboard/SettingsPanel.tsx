@@ -21,11 +21,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger
 } from "@/components/ui/collapsible";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Schema for image settings form
 const imageSettingsSchema = z.object({
   context: z.enum(["single", "multi"]),
   time: z.number().min(1).max(60),
+  promptSource: z.enum(["preset", "custom"]).default("preset"),
   prompt: z.string().min(1),
   cfg: z.number().min(0).max(1),
   useUniformSettings: z.boolean().default(true),
@@ -49,12 +51,13 @@ interface SettingsPanelProps {
   onSettingsChange: (settings: ImageSettingsFormValues) => void;
 }
 
-const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen }) => {
+const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsChange }) => {
   const form = useForm<ImageSettingsFormValues>({
     resolver: zodResolver(imageSettingsSchema),
     defaultValues: {
       context: "single",
       time: 5,
+      promptSource: "preset",
       prompt: "Modern luxury home interior",
       cfg: 0.7,
       useUniformSettings: true,
@@ -64,6 +67,14 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen }) => {
 
   const currentContext = form.watch("context");
   const useUniformSettings = form.watch("useUniformSettings");
+  const promptSource = form.watch("promptSource");
+
+  React.useEffect(() => {
+    const subscription = form.watch((value) => {
+      onSettingsChange(value as ImageSettingsFormValues);
+    });
+    return () => subscription.unsubscribe();
+  }, [form, onSettingsChange]);
 
   return (
     <div className={`
@@ -107,36 +118,56 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen }) => {
                       <FormLabel className="flex items-center gap-2">
                         <Clock className="h-4 w-4" /> Time (seconds)
                       </FormLabel>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center gap-4">
                         <Button 
                           type="button" 
-                          variant="outline" 
+                          variant={field.value === 5 ? "default" : "outline"}
                           size="sm"
                           onClick={() => form.setValue("time", 5)}
-                          className={field.value === 5 ? "bg-primary text-primary-foreground" : ""}
                         >
                           5s
                         </Button>
                         <Button 
                           type="button" 
-                          variant="outline" 
+                          variant={field.value === 10 ? "default" : "outline"}
                           size="sm"
                           onClick={() => form.setValue("time", 10)}
-                          className={field.value === 10 ? "bg-primary text-primary-foreground" : ""}
                         >
                           10s
                         </Button>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            {...field} 
-                            onChange={(e) => field.onChange(parseInt(e.target.value))}
-                            min={1}
-                            max={60}
-                            className="w-20"
-                          />
-                        </FormControl>
                       </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="promptSource"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel className="flex items-center gap-2">
+                        <ListFilter className="h-4 w-4" /> Prompt Source
+                      </FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex flex-col space-y-1"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="preset" id="preset" />
+                            <label htmlFor="preset" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              Use preset prompt
+                            </label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="custom" id="custom" />
+                            <label htmlFor="custom" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              Custom prompt
+                            </label>
+                          </div>
+                        </RadioGroup>
+                      </FormControl>
                     </FormItem>
                   )}
                 />
@@ -146,33 +177,30 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen }) => {
                   name="prompt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <ListFilter className="h-4 w-4" /> Prompt
-                      </FormLabel>
                       <FormControl>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          defaultValue={field.value}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a prompt" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SAMPLE_PROMPTS.map((prompt) => (
-                              <SelectItem key={prompt} value={prompt}>
-                                {prompt}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormControl>
-                        <Input
-                          placeholder="Or type your own prompt..."
-                          {...field}
-                          className="mt-2"
-                        />
+                        {promptSource === "preset" ? (
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            defaultValue={field.value}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a prompt" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {SAMPLE_PROMPTS.map((prompt) => (
+                                <SelectItem key={prompt} value={prompt}>
+                                  {prompt}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            placeholder="Type your custom prompt..."
+                            {...field}
+                          />
+                        )}
                       </FormControl>
                     </FormItem>
                   )}
@@ -258,14 +286,53 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen }) => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Time per Image (seconds)</FormLabel>
+                            <div className="flex items-center justify-center gap-4">
+                              <Button 
+                                type="button" 
+                                variant={field.value === 5 ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => form.setValue("time", 5)}
+                              >
+                                5s
+                              </Button>
+                              <Button 
+                                type="button" 
+                                variant={field.value === 10 ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => form.setValue("time", 10)}
+                              >
+                                10s
+                              </Button>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="promptSource"
+                        render={({ field }) => (
+                          <FormItem className="space-y-3">
+                            <FormLabel>Prompt Source</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                {...field} 
-                                onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                min={1}
-                                max={60}
-                              />
+                              <RadioGroup
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                className="flex flex-col space-y-1"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="preset" id="global-preset" />
+                                  <label htmlFor="global-preset" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    Use preset prompt
+                                  </label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="custom" id="global-custom" />
+                                  <label htmlFor="global-custom" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    Custom prompt
+                                  </label>
+                                </div>
+                              </RadioGroup>
                             </FormControl>
                           </FormItem>
                         )}
@@ -276,12 +343,30 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen }) => {
                         name="prompt"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Global Prompt</FormLabel>
                             <FormControl>
-                              <Input
-                                placeholder="Enter prompt for all images..."
-                                {...field}
-                              />
+                              {promptSource === "preset" ? (
+                                <Select
+                                  onValueChange={field.onChange}
+                                  value={field.value}
+                                  defaultValue={field.value}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select a prompt" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {SAMPLE_PROMPTS.map((prompt) => (
+                                      <SelectItem key={prompt} value={prompt}>
+                                        {prompt}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input
+                                  placeholder="Type your custom prompt..."
+                                  {...field}
+                                />
+                              )}
                             </FormControl>
                           </FormItem>
                         )}
