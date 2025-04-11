@@ -1,3 +1,4 @@
+
 // src/components/FileUploader/FileList.tsx
 import React from 'react';
 import { X, Upload } from 'lucide-react';
@@ -12,6 +13,7 @@ interface FileListProps {
   onClearAll: () => void;
   isUploading: boolean;
   hasVideo: boolean;
+  showIndividualPrompts?: boolean;
 }
 
 const FileList: React.FC<FileListProps> = ({ 
@@ -21,6 +23,7 @@ const FileList: React.FC<FileListProps> = ({
   onClearAll,
   isUploading,
   hasVideo,
+  showIndividualPrompts = true,
 }) => {
   if (files.length === 0) {
     return null;
@@ -53,6 +56,7 @@ const FileList: React.FC<FileListProps> = ({
             onRemove={onRemoveFile}
             onPromptChange={onUpdatePrompt}
             disabled={isUploading}
+            showPromptField={showIndividualPrompts}
           />
         ))}
       </div>

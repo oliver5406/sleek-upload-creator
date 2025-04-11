@@ -1,3 +1,4 @@
+
 // src/components/FileUploader/FileItem.tsx
 import React from 'react';
 import { X } from 'lucide-react';
@@ -11,13 +12,15 @@ interface FileItemProps {
   onRemove: (id: string) => void;
   onPromptChange: (id: string, prompt: string) => void;
   disabled?: boolean;
+  showPromptField?: boolean;
 }
 
 const FileItem: React.FC<FileItemProps> = ({ 
   file, 
   onRemove, 
   onPromptChange, 
-  disabled = false 
+  disabled = false,
+  showPromptField = true
 }) => {
   return (
     <div className="grid md:grid-cols-2 gap-4 border rounded-lg p-4 bg-card shadow-sm">
@@ -44,17 +47,19 @@ const FileItem: React.FC<FileItemProps> = ({
         </div>
       </div>
       
-      <div className="flex flex-col h-full">
-        <Label htmlFor={`prompt-${file.id}`} className="mb-2">Image Description</Label>
-        <Textarea 
-          id={`prompt-${file.id}`}
-          placeholder="Describe this image or provide details about what you want to highlight (e.g., 'Spacious living room with natural light and modern furniture')"
-          value={file.prompt}
-          onChange={(e) => onPromptChange(file.id, e.target.value)}
-          className="flex-grow resize-none"
-          disabled={disabled}
-        />
-      </div>
+      {showPromptField && (
+        <div className="flex flex-col h-full">
+          <Label htmlFor={`prompt-${file.id}`} className="mb-2">Image Description</Label>
+          <Textarea 
+            id={`prompt-${file.id}`}
+            placeholder="Describe this image or provide details about what you want to highlight (e.g., 'Spacious living room with natural light and modern furniture')"
+            value={file.prompt}
+            onChange={(e) => onPromptChange(file.id, e.target.value)}
+            className="flex-grow resize-none"
+            disabled={disabled}
+          />
+        </div>
+      )}
     </div>
   );
 };

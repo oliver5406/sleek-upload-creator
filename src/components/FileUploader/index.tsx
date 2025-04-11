@@ -1,4 +1,3 @@
-
 // src/components/FileUploader/index.tsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -67,7 +66,12 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
   const [processingComplete, setProcessingComplete] = useState(initialState.processingComplete);
   const [hasError, setHasError] = useState(false);
   const [initialLoading, setInitialLoading] = useState(!!initialState.batchId); // Only set to loading if we have a batchId to validate
-  const [aspectRatio, setAspectRatio] = useState('16:9');
+
+  // Determine max files based on settingsContext
+  const maxFiles = settingsContext === 'single' ? 1 : 3;
+  
+  // Determine if we should show individual prompts
+  const showIndividualPrompts = settingsContext === 'multi' && !useUniformSettings;
 
   // Use this ref to manage the interval instead of state to avoid re-renders
   const statusPollingInterval = 5000; // 5 seconds
@@ -90,10 +94,18 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
   }, [batchId, processingComplete, files, progress]);
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
-    setFiles(prev => [...prev, ...newFiles]);
+    setFiles(prev => {
+      // For single image context, replace all files with the new one(s)
+      if (settingsContext === 'single') {
+        return newFiles.slice(0, 1);
+      }
+      // For multi image context, append files up to the limit
+      const updatedFiles = [...prev, ...newFiles];
+      return updatedFiles.slice(0, maxFiles);
+    });
     // Reset any error state when new files are added
     setHasError(false);
-  }, []);
+  }, [settingsContext, maxFiles]);
 
   const removeFile = useCallback((id: string) => {
     setFiles(prev => {
@@ -158,15 +170,17 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       return;
     }
   
-    // Check if all files have prompts
-    const missingPrompts = files.some(file => !file.prompt);
-    if (missingPrompts) {
-      toast({
-        title: "Missing prompts",
-        description: "Please add a prompt for each image.",
-        variant: "destructive"
-      });
-      return;
+    // For multi-image mode with individual prompts, check if all files have prompts
+    if (showIndividualPrompts) {
+      const missingPrompts = files.some(file => !file.prompt);
+      if (missingPrompts) {
+        toast({
+          title: "Missing prompts",
+          description: "Please add a prompt for each image.",
+          variant: "destructive"
+        });
+        return;
+      }
     }
   
     // Stop any existing polling
@@ -213,7 +227,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       setIsUploading(false);
       setHasError(true);
     }
-  }, [files, toast, stopPolling, getToken]);  
+  }, [files, toast, stopPolling, getToken, showIndividualPrompts]);  
 
   const pollBatchStatus = useCallback(async (currentBatchId: string) => {
     if (!currentBatchId) return;
@@ -452,6 +466,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
     }
   }, [batchId, getToken, clearFiles, pollBatchStatus]);
 
+  // When settingsContext changes, clear files if we have more than the max allowed
+  useEffect(() => {
+    if (files.length > maxFiles) {
+      setFiles(prev => prev.slice(0, maxFiles));
+    }
+  }, [settingsContext, maxFiles, files.length]);
+
   // Show loading skeleton while initializing
   if (initialLoading) {
     return (
@@ -466,17 +487,14 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
     );
   }
 
-  // We can now use settingsContext and useUniformSettings props if needed
-  // For now, we're just accepting them but not using them directly
-  // They could be used to modify FileUploader behavior based on the settings context
-
   return (
     <div className="w-full max-w-3xl mx-auto space-y-8">
       <FileDropZone 
         onFilesAdded={addFiles}
         isUploading={isUploading}
         hasFiles={files.length > 0}
-        currentFileCount={files.length} 
+        currentFileCount={files.length}
+        maxFiles={maxFiles}
       />
 
       {files.length > 0 && (
@@ -487,9 +505,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
           onClearAll={clearFiles}
           isUploading={isUploading}
           hasVideo={!!batchId && processingComplete}
-          // If we need to modify FileList behavior based on settings:
-          // settingsContext={settingsContext}
-          // useUniformSettings={useUniformSettings}
+          showIndividualPrompts={showIndividualPrompts}
         />
       )}
 

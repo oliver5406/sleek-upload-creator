@@ -1,3 +1,4 @@
+
 // src/components/FileUploader/FileDropZone.tsx
 import React, { useCallback, useState, useRef } from 'react';
 import { Camera } from 'lucide-react';
@@ -10,13 +11,15 @@ interface FileDropZoneProps {
   isUploading: boolean;
   hasFiles: boolean;
   currentFileCount: number;
+  maxFiles: number;
 }
 
 const FileDropZone: React.FC<FileDropZoneProps> = ({ 
   onFilesAdded, 
   isUploading, 
   hasFiles,
-  currentFileCount
+  currentFileCount,
+  maxFiles
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,17 +80,17 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
     console.log('currentFileCount (drop):', currentFileCount);
     console.log('files.length (new dropped files):', files?.length);
 
-    if (currentFileCount + files.length > 3) {
+    if (currentFileCount + files.length > maxFiles) {
       toast({
         title: "Too many files",
-        description: "You can only upload a maximum of 3 images.",
+        description: `You can only upload a maximum of ${maxFiles} image${maxFiles === 1 ? '' : 's'}.`,
         variant: "destructive"
       });
       return;
     }
 
     processFiles(files);
-  }, [processFiles, toast, currentFileCount]);
+  }, [processFiles, toast, currentFileCount, maxFiles]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -96,10 +99,10 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
 
     if (!files) return;
 
-    if (currentFileCount + files.length > 3) {
+    if (currentFileCount + files.length > maxFiles) {
       toast({
         title: "Too many files",
-        description: "You can only upload a maximum of 3 images.",
+        description: `You can only upload a maximum of ${maxFiles} image${maxFiles === 1 ? '' : 's'}.`,
         variant: "destructive"
       });
 
@@ -114,7 +117,7 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [processFiles, toast, currentFileCount]);
+  }, [processFiles, toast, currentFileCount, maxFiles]);
 
   const handleBrowseFiles = () => {
     if (fileInputRef.current) {
@@ -135,7 +138,7 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
       <input
         type="file"
         accept="image/*"
-        multiple
+        multiple={maxFiles > 1}
         className="hidden"
         onChange={handleFileChange}
         ref={fileInputRef}
@@ -147,7 +150,12 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
         </div>
         <div className="space-y-2">
           <h3 className="text-xl font-semibold">Upload Property Images</h3>
-          <p className="text-muted-foreground">Drag and drop your best property photos</p>
+          <p className="text-muted-foreground">
+            Drag and drop your {maxFiles === 1 ? 'best property photo' : 'best property photos'}
+          </p>
+          {maxFiles > 1 && (
+            <p className="text-sm text-muted-foreground">Maximum {maxFiles} images</p>
+          )}
         </div>
         <Button
           variant="outline"
