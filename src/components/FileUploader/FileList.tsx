@@ -1,7 +1,7 @@
 
 // src/components/FileUploader/FileList.tsx
-import React from 'react';
-import { X, Upload } from 'lucide-react';
+import React, { useRef } from 'react';
+import { X, Upload, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import FileItem from './FileItem';
 import { FileWithPreview } from './types';
@@ -11,9 +11,11 @@ interface FileListProps {
   onRemoveFile: (id: string) => void;
   onUpdatePrompt: (id: string, prompt: string) => void;
   onClearAll: () => void;
+  onBrowseFiles: () => void;
   isUploading: boolean;
   hasVideo: boolean;
   showIndividualPrompts?: boolean;
+  maxFiles: number;
 }
 
 const FileList: React.FC<FileListProps> = ({ 
@@ -21,21 +23,41 @@ const FileList: React.FC<FileListProps> = ({
   onRemoveFile,
   onUpdatePrompt,
   onClearAll,
+  onBrowseFiles,
   isUploading,
   hasVideo,
   showIndividualPrompts = true,
+  maxFiles,
 }) => {
   if (files.length === 0) {
     return null;
   }
+
+  const canAddMoreFiles = files.length < maxFiles;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">
           {files.length} {files.length === 1 ? 'Image' : 'Images'} Selected
+          {maxFiles > 1 && (
+            <span className="text-sm text-muted-foreground ml-2">
+              (Maximum {maxFiles})
+            </span>
+          )}
         </h3>
-        <div className="flex space-x-2">
+        <div className="flex gap-2">
+          {canAddMoreFiles && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onBrowseFiles}
+              disabled={isUploading}
+            >
+              <FolderOpen className="mr-2 h-4 w-4" />
+              Browse Files
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
