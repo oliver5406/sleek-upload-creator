@@ -20,6 +20,14 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   const { toast } = useToast();
   const { getToken } = useAuth();
   const toastShownRef = useRef(false);
+
+  useEffect(() => {
+    const currentPrompt = customPrompt || globalPrompt || "";
+    setFiles(prev => prev.map(file => ({
+      ...file,
+      prompt: currentPrompt
+    })));
+  }, [globalPrompt, customPrompt]);
   const initialCheckDoneRef = useRef(false);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
