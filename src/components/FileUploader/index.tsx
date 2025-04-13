@@ -101,7 +101,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     setFiles(prev => {
       const newFilesWithPrompt = newFiles.map(file => ({
         ...file,
-        prompt: currentPrompt
+        prompt: currentPrompt,
+        cfg: settings?.cfg || 0.5,
+        time: settings?.time || 30
       }));
 
       if (settingsContext === "single") {

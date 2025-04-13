@@ -31,7 +31,9 @@ export const uploadBatch = async (
     formData.append('files[]', fileObj.file);
     fileDetails.push({
       filename: fileObj.file.name,
-      prompt: fileObj.prompt
+      prompt: fileObj.prompt,
+      cfg: fileObj.cfg,
+      time: fileObj.time
     });
   });
 

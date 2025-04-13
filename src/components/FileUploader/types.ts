@@ -5,6 +5,8 @@ export type FileWithPreview = {
     id: string;
     preview: string;
     prompt?: string;
+    cfg?: number;
+    time?: number;
 };
   
 export type BatchStatus = {
