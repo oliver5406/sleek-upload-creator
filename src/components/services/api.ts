@@ -69,5 +69,3 @@ export const getBatchStatus = async (
 export const getDownloadUrl = (batchId: string): string => {
   return `${API_URL}/download-all/${batchId}`;
 };
-
-

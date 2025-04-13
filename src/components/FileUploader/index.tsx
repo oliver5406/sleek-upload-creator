@@ -7,7 +7,7 @@ import FileList from './FileList';
 import UploadProgress from './UploadProgress';
 import { FileWithPreview, FileUploaderProps } from './types';
 import { uploadBatch, getBatchStatus, getDownloadUrl } from '@/components/services/api';
-import { Skeleton } from '@/components/ui/skeleton'; // Make sure you have this component
+import { Skeleton } from '@/components/ui/skeleton';
 
 const STORAGE_KEY = 'fileUploader_state';
 
