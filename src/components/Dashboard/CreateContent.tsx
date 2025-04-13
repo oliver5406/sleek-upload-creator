@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Settings } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import FileUploader from '@/components/FileUploader/index';
@@ -23,21 +23,26 @@ const CreateContent: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-6 relative">
+      <div className="flex flex-col lg:flex-row gap-6 relative">
         <Button 
           variant="outline" 
           size="sm" 
-          className="md:hidden mb-4 flex items-center"
+          className="lg:hidden mb-4 flex items-center"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           <Settings className="mr-2 h-4 w-4" />
           {isMenuOpen ? 'Hide Settings' : 'Show Settings'}
         </Button>
         
-        <SettingsPanel 
-          isMenuOpen={isMenuOpen} 
-          onSettingsChange={handleSettingsChange} 
-        />
+        <div className={`
+          ${isMenuOpen ? 'block' : 'hidden lg:block'}
+          lg:sticky lg:top-6 lg:self-start
+        `}>
+          <SettingsPanel 
+            isMenuOpen={isMenuOpen} 
+            onSettingsChange={handleSettingsChange} 
+          />
+        </div>
         
         <div className="flex-1">
           <FileUploader 

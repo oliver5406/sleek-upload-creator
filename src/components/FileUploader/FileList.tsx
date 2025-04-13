@@ -1,7 +1,7 @@
 
 // src/components/FileUploader/FileList.tsx
-import React, { useRef } from 'react';
-import { X, Upload, FolderOpen } from 'lucide-react';
+import React from 'react';
+import { X, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import FileItem from './FileItem';
 import { FileWithPreview } from './types';
@@ -36,7 +36,7 @@ const FileList: React.FC<FileListProps> = ({
   const canAddMoreFiles = files.length < maxFiles;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 mt-4 border border-border rounded-lg p-4 bg-card">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">
           {files.length} {files.length === 1 ? 'Image' : 'Images'} Selected
@@ -70,7 +70,7 @@ const FileList: React.FC<FileListProps> = ({
         </div>
       </div>
 
-      <div className="grid gap-6 max-h-[600px] overflow-y-auto px-1 py-2">
+      <div className="grid gap-6 max-h-[400px] overflow-y-auto px-1 py-2">
         {files.map((file) => (
           <FileItem
             key={file.id}
