@@ -4,9 +4,11 @@ import { Settings } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import FileUploader from '@/components/FileUploader/index';
 import SettingsPanel, { ImageSettingsFormValues } from './SettingsPanel';
+import { FileWithPreview } from '@/components/FileUploader/types';
 
 const CreateContent: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [settings, setSettings] = useState<ImageSettingsFormValues>({
     context: "single",
     time: 5,
@@ -19,6 +21,28 @@ const CreateContent: React.FC = () => {
 
   const handleSettingsChange = (newSettings: ImageSettingsFormValues) => {
     setSettings(newSettings);
+    
+    // Update file prompts when prompt changes in settings
+    if (files.length > 0 && newSettings.prompt !== settings.prompt) {
+      const updatedFiles = files.map(file => ({
+        ...file,
+        prompt: newSettings.prompt
+      }));
+      setFiles(updatedFiles);
+    }
+  };
+
+  // Handle files updates from FileUploader
+  const handleFilesUpdate = (updatedFiles: FileWithPreview[]) => {
+    setFiles(updatedFiles);
+  };
+
+  // Get the current prompt from files (if they exist)
+  const getCurrentPrompt = () => {
+    if (files.length > 0 && files[0].prompt) {
+      return files[0].prompt;
+    }
+    return settings.prompt;
   };
 
   return (
@@ -37,12 +61,15 @@ const CreateContent: React.FC = () => {
         <SettingsPanel 
           isMenuOpen={isMenuOpen} 
           onSettingsChange={handleSettingsChange} 
+          currentPrompt={getCurrentPrompt()}
         />
         
         <div className="flex-1">
           <FileUploader 
             settingsContext={settings.context}
             useUniformSettings={settings.useUniformSettings}
+            onFilesChanged={handleFilesUpdate}
+            globalPrompt={settings.prompt}
           />
         </div>
       </div>

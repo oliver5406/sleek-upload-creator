@@ -11,21 +11,19 @@ import { Skeleton } from '@/components/ui/skeleton'; // Make sure you have this 
 
 const STORAGE_KEY = 'fileUploader_state';
 
-const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniformSettings }) => {
+const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniformSettings, onFilesChanged, globalPrompt }) => {
   const { toast } = useToast();
   const { getToken } = useAuth();
   const toastShownRef = useRef(false);
   const initialCheckDoneRef = useRef(false);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Initialize from localStorage if available
   const getInitialState = () => {
     try {
       const savedState = localStorage.getItem(STORAGE_KEY);
       if (savedState) {
         const parsedState = JSON.parse(savedState);
         
-        // Validate that we have a proper state
         if (parsedState && 
             typeof parsedState === 'object' && 
             (parsedState.batchId || parsedState.files?.length > 0)) {
@@ -37,7 +35,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
           };
         }
       }
-      // If we get here, either there's no saved state or it's invalid
       return {
         batchId: null,
         processingComplete: false,
@@ -46,7 +43,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       };
     } catch (e) {
       console.error('Error loading saved state:', e);
-      // Clear potentially corrupt state
       localStorage.removeItem(STORAGE_KEY);
       return {
         batchId: null,
@@ -60,25 +56,35 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
   const initialState = getInitialState();
   
   const [files, setFiles] = useState<FileWithPreview[]>(initialState.files);
-  const [isUploading, setIsUploading] = useState(false); // Start with false and determine during validation
+  const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(initialState.progress);
   const [batchId, setBatchId] = useState<string | null>(initialState.batchId);
   const [processingComplete, setProcessingComplete] = useState(initialState.processingComplete);
   const [hasError, setHasError] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(!!initialState.batchId); // Only set to loading if we have a batchId to validate
+  const [initialLoading, setInitialLoading] = useState(!!initialState.batchId);
 
-  // Determine max files based on settingsContext
   const maxFiles = settingsContext === 'single' ? 1 : 3;
   
-  // Determine if we should show individual prompts
   const showIndividualPrompts = settingsContext === 'multi' && !useUniformSettings;
 
-  // Use this ref to manage the interval instead of state to avoid re-renders
-  const statusPollingInterval = 5000; // 5 seconds
+  const statusPollingInterval = 5000;
 
-  // Save state to localStorage whenever relevant state changes
   useEffect(() => {
-    // Only save if we have meaningful state to save
+    if (globalPrompt && files.length > 0 && !showIndividualPrompts) {
+      setFiles(prev => prev.map(file => ({
+        ...file,
+        prompt: globalPrompt
+      })));
+    }
+  }, [globalPrompt, files.length, showIndividualPrompts]);
+
+  useEffect(() => {
+    if (onFilesChanged) {
+      onFilesChanged(files);
+    }
+  }, [files, onFilesChanged]);
+
+  useEffect(() => {
     if (batchId || files.length > 0) {
       const stateToSave = {
         batchId,
@@ -88,29 +94,37 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     } else {
-      // Clear localStorage if we have no state to save
       localStorage.removeItem(STORAGE_KEY);
     }
   }, [batchId, processingComplete, files, progress]);
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
     setFiles(prev => {
-      // For single image context, replace all files with the new one(s)
       if (settingsContext === 'single') {
-        return newFiles.slice(0, 1);
+        const filesWithPrompt = newFiles.slice(0, 1).map(file => ({
+          ...file,
+          prompt: globalPrompt || file.prompt || 'Modern luxury home interior'
+        }));
+        return filesWithPrompt;
       }
-      // For multi image context, append files up to the limit
       const updatedFiles = [...prev, ...newFiles];
-      return updatedFiles.slice(0, maxFiles);
+      const limitedFiles = updatedFiles.slice(0, maxFiles);
+
+      if (!showIndividualPrompts && globalPrompt) {
+        return limitedFiles.map(file => ({
+          ...file,
+          prompt: globalPrompt
+        }));
+      }
+
+      return limitedFiles;
     });
-    // Reset any error state when new files are added
     setHasError(false);
-  }, [settingsContext, maxFiles]);
+  }, [settingsContext, maxFiles, showIndividualPrompts, globalPrompt]);
 
   const removeFile = useCallback((id: string) => {
     setFiles(prev => {
       const updatedFiles = prev.filter(file => file.id !== id);
-      // If removing the last file, also clear batch state
       if (updatedFiles.length === 0) {
         setBatchId(null);
         setProcessingComplete(false);
@@ -123,12 +137,18 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
   }, []);
 
   const updateFilePrompt = useCallback((id: string, prompt: string) => {
-    setFiles(prev => 
-      prev.map(file => 
+    setFiles(prev => {
+      const updatedFiles = prev.map(file => 
         file.id === id ? { ...file, prompt } : file
-      )
-    );
-  }, []);
+      );
+      
+      if (settingsContext === 'single' && prev.length === 1 && onFilesChanged) {
+        onFilesChanged(updatedFiles);
+      }
+      
+      return updatedFiles;
+    });
+  }, [settingsContext, onFilesChanged]);
 
   const clearFiles = useCallback(() => {
     setFiles([]);
@@ -136,10 +156,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
     setProcessingComplete(false);
     setHasError(false);
     
-    // Clear local storage
     localStorage.removeItem(STORAGE_KEY);
     
-    // Stop polling if it's active
     if (pollTimeoutRef.current) {
       clearTimeout(pollTimeoutRef.current);
       pollTimeoutRef.current = null;
@@ -148,18 +166,17 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
     setProgress(0);
     setIsUploading(false);
     toastShownRef.current = false;
-    initialCheckDoneRef.current = true; // Prevent initial check after clearing
-    setInitialLoading(false); // Ensure we're not in loading state
+    initialCheckDoneRef.current = true;
+    setInitialLoading(false);
   }, []);
 
-  // Function to stop polling
   const stopPolling = useCallback(() => {
     if (pollTimeoutRef.current) {
       clearTimeout(pollTimeoutRef.current);
       pollTimeoutRef.current = null;
     }
   }, []);
-  
+
   const uploadFiles = useCallback(async () => {
     if (files.length === 0) {
       toast({
@@ -170,7 +187,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       return;
     }
   
-    // For multi-image mode with individual prompts, check if all files have prompts
     if (showIndividualPrompts) {
       const missingPrompts = files.some(file => !file.prompt);
       if (missingPrompts) {
@@ -183,7 +199,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       }
     }
   
-    // Stop any existing polling
     stopPolling();
   
     toastShownRef.current = false;
@@ -193,7 +208,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
     setProgress(0);
   
     try {
-      // Get the token from the context
       const token = await getToken();
       
       if (!token) {
@@ -206,12 +220,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
         return;
       }
   
-      // Pass the token to the API request
       const response = await uploadBatch(files, token);
       
       if (response && response.batch_id) {
         setBatchId(response.batch_id);
-        // Start polling for status immediately
         pollBatchStatus(response.batch_id);
       } else {
         throw new Error("No batch ID returned from upload");
@@ -227,7 +239,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       setIsUploading(false);
       setHasError(true);
     }
-  }, [files, toast, stopPolling, getToken, showIndividualPrompts]);  
+  }, [files, toast, stopPolling, getToken, showIndividualPrompts]);
 
   const pollBatchStatus = useCallback(async (currentBatchId: string) => {
     if (!currentBatchId) return;
@@ -249,7 +261,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       
       const status = batchStatus.status;
       
-      // Calculate overall progress
       if (batchStatus.job_details && batchStatus.job_details.length > 0) {
         const totalProgress = batchStatus.job_details.reduce((sum, job) => {
           return sum + (job.progress || 0);
@@ -259,19 +270,15 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
         setProgress(overallProgress);
       }
       
-      // Clear error state since we got a successful response
       setHasError(false);
       
-      // Check if processing is complete or failed
       const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
       
       if (isFinished) {
-        // Stop polling if the process is finished
         stopPolling();
         setIsUploading(false);
         setProcessingComplete(true);
         
-        // Show appropriate toast based on status
         if (!toastShownRef.current) {
           if (status === 'completed') {
             toast({
@@ -293,7 +300,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
           toastShownRef.current = true;
         }
       } else {
-        // If processing is not finished, schedule another poll
         pollTimeoutRef.current = setTimeout(() => {
           pollBatchStatus(currentBatchId);
         }, statusPollingInterval);
@@ -301,10 +307,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
     } catch (error) {
       console.error('Status polling error:', error);
       
-      // Set error state
       setHasError(true);
       
-      // Show error toast only once
       if (!toastShownRef.current) {
         toast({
           title: "Status check failed",
@@ -314,15 +318,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
         toastShownRef.current = true;
       }
       
-      // Stop polling on error
       stopPolling();
       setIsUploading(false);
     } finally {
-      // Make sure we're done with initial loading
       setInitialLoading(false);
     }
   }, [getToken, stopPolling, toast]);
-  
+
   const downloadVideo = useCallback(async () => {
     if (!batchId) return;
   
@@ -343,13 +345,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
         title: "Download started",
         description: "Your property videos are being downloaded.",
       });
-      // Create a hidden anchor element for download
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.setAttribute('download', '');
       link.setAttribute('target', '_blank');
       
-      // Append custom headers through fetch API
       fetch(downloadUrl, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -367,7 +367,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
           link.click();
           link.remove();
           window.URL.revokeObjectURL(url);
-          
         })
         .catch(err => {
           console.error('Download error:', err);
@@ -388,8 +387,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       });
     }
   }, [batchId, getToken, toast]);
-  
-  // Cleanup interval on unmount
+
   useEffect(() => {
     return () => {
       if (pollTimeoutRef.current) {
@@ -398,11 +396,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
     };
   }, []);
 
-  // Validate saved state on mount - improved version
   useEffect(() => {
     const validateSavedState = async () => {
       try {
-        // If we have no batchId, we're definitely not uploading
         if (!batchId) {
           setIsUploading(false);
           setInitialLoading(false);
@@ -411,25 +407,21 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
         
         const token = await getToken();
         if (!token) {
-          clearFiles(); // Clear invalid state if no token
-          return;
-        }
-        
-        // Try to fetch the batch status to verify it exists
-        const batchStatus = await getBatchStatus(batchId, token);
-        
-        if (!batchStatus || !batchStatus.status) {
-          // If the batch doesn't exist or has no status, clear the saved state
           clearFiles();
           return;
         }
         
-        // Set uploading status based on batch status
+        const batchStatus = await getBatchStatus(batchId, token);
+        
+        if (!batchStatus || !batchStatus.status) {
+          clearFiles();
+          return;
+        }
+        
         const status = batchStatus.status;
         const isProcessing = ['queued', 'processing', 'started'].includes(status);
         setIsUploading(isProcessing);
         
-        // Calculate progress if available
         if (batchStatus.job_details && batchStatus.job_details.length > 0) {
           const totalProgress = batchStatus.job_details.reduce((sum, job) => {
             return sum + (job.progress || 0);
@@ -439,18 +431,15 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
           setProgress(overallProgress);
         }
         
-        // Check if processing is complete or failed
         const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
         if (isFinished) {
           setProcessingComplete(true);
           setIsUploading(false);
         } else if (isProcessing && !pollTimeoutRef.current) {
-          // If still processing but no active polling, start polling
           pollBatchStatus(batchId);
         }
       } catch (error) {
         console.error('Error validating saved state:', error);
-        // If we can't verify the batch status, mark as error but keep the state
         setHasError(true);
         setIsUploading(false);
       } finally {
@@ -458,7 +447,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       }
     };
     
-    // If we have a batchId, we need to validate
     if (batchId) {
       validateSavedState();
     } else {
@@ -466,14 +454,17 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
     }
   }, [batchId, getToken, clearFiles, pollBatchStatus]);
 
-  // When settingsContext changes, clear files if we have more than the max allowed
   useEffect(() => {
     if (files.length > maxFiles) {
       setFiles(prev => prev.slice(0, maxFiles));
+    } else if (files.length > 0 && (!showIndividualPrompts || settingsContext === 'single') && globalPrompt) {
+      setFiles(prev => prev.map(file => ({
+        ...file,
+        prompt: globalPrompt
+      })));
     }
-  }, [settingsContext, maxFiles, files.length]);
+  }, [settingsContext, maxFiles, files.length, showIndividualPrompts, globalPrompt]);
 
-  // Show loading skeleton while initializing
   if (initialLoading) {
     return (
       <div className="w-full max-w-3xl mx-auto space-y-8">
@@ -523,7 +514,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
   );
 };
 
-// Set default props
 FileUploader.defaultProps = {
   settingsContext: "single",
   useUniformSettings: true

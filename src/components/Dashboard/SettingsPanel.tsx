@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Clock, ListFilter, SlidersHorizontal, Settings, ImageIcon, Images } from 'lucide-react';
 import { useForm } from "react-hook-form";
@@ -50,9 +51,10 @@ const SAMPLE_PROMPTS = [
 interface SettingsPanelProps {
   isMenuOpen: boolean;
   onSettingsChange: (settings: ImageSettingsFormValues) => void;
+  currentPrompt?: string; // New prop to receive the current prompt from FileItem
 }
 
-const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsChange }) => {
+const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsChange, currentPrompt }) => {
   const form = useForm<ImageSettingsFormValues>({
     resolver: zodResolver(imageSettingsSchema),
     defaultValues: {
@@ -69,6 +71,18 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsCha
   const currentContext = form.watch("context");
   const useUniformSettings = form.watch("useUniformSettings");
   const promptSource = form.watch("promptSource");
+
+  // Update the form when currentPrompt changes from outside
+  React.useEffect(() => {
+    if (currentPrompt && currentPrompt !== form.getValues("prompt")) {
+      // If the prompt changed, we need to update the form
+      form.setValue("prompt", currentPrompt);
+      // Also set promptSource to "custom" if the prompt doesn't match any preset
+      if (!SAMPLE_PROMPTS.includes(currentPrompt)) {
+        form.setValue("promptSource", "custom");
+      }
+    }
+  }, [currentPrompt, form]);
 
   React.useEffect(() => {
     const subscription = form.watch((value) => {

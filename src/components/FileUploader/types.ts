@@ -1,29 +1,17 @@
 
 // src/components/FileUploader/types.ts
-export type FileWithPreview = {
-    file: File;
-    id: string;
-    preview: string;
-    prompt?: string;
-};
-  
-export type BatchStatus = {
-    status: string;
-    job_details: Array<{
-      filename: string;
-      status: string;
-      progress: number;
-      error?: string;
-      video_url?: string;
-      job_id: string;
-    }>;
-};
-  
-export interface BatchResponse {
-    batch_id: string;
+import { ReactNode } from 'react';
+
+export interface FileWithPreview {
+  id: string;
+  file: File;
+  preview: string;
+  prompt: string;
 }
 
 export interface FileUploaderProps {
-    settingsContext?: "single" | "multi";
-    useUniformSettings?: boolean;
+  settingsContext: "single" | "multi";
+  useUniformSettings: boolean;
+  onFilesChanged?: (files: FileWithPreview[]) => void;
+  globalPrompt?: string;
 }
