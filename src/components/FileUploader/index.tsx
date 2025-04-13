@@ -469,7 +469,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       })));
     }
   }, [settingsContext, maxFiles, files.length, showIndividualPrompts, globalPrompt]);
-
+  
   if (initialLoading) {
     return (
       <div className="w-full max-w-3xl mx-auto space-y-8">
