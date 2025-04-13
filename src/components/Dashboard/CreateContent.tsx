@@ -50,6 +50,10 @@ const CreateContent: React.FC = () => {
             useUniformSettings={settings.useUniformSettings}
             globalPrompt={settings.promptSource === "preset" ? settings.prompt : ""}
             customPrompt={settings.promptSource === "custom" ? settings.prompt : ""}
+            settings={{
+              cfg: settings.cfg,
+              time: settings.time
+            }}
           />
         </div>
       </div>
