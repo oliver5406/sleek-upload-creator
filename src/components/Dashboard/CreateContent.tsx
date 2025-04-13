@@ -22,8 +22,11 @@ const CreateContent: React.FC = () => {
   const handleSettingsChange = (newSettings: ImageSettingsFormValues) => {
     setSettings(newSettings);
     
-    // Update file prompts when prompt changes in settings
-    if (files.length > 0 && newSettings.prompt !== settings.prompt) {
+    // Only update file prompts when prompt changes in settings and we should apply it globally
+    if (files.length > 0 && 
+        newSettings.prompt !== settings.prompt && 
+        (newSettings.context === 'single' || newSettings.useUniformSettings)) {
+      console.log("Settings prompt changed, updating files:", newSettings.prompt);
       const updatedFiles = files.map(file => ({
         ...file,
         prompt: newSettings.prompt
@@ -34,7 +37,23 @@ const CreateContent: React.FC = () => {
 
   // Handle files updates from FileUploader
   const handleFilesUpdate = (updatedFiles: FileWithPreview[]) => {
+    console.log("Files updated in FileUploader:", updatedFiles);
     setFiles(updatedFiles);
+    
+    // If there's an individual prompt change in single image mode or uniform settings,
+    // update the settings panel prompt to match
+    if (updatedFiles.length > 0 && 
+        (settings.context === 'single' || settings.useUniformSettings)) {
+      const filePrompt = updatedFiles[0].prompt;
+      if (filePrompt && filePrompt !== settings.prompt) {
+        console.log("File prompt changed, updating settings prompt:", filePrompt);
+        setSettings(prev => ({
+          ...prev,
+          prompt: filePrompt,
+          promptSource: "custom" // Switch to custom mode when prompt is edited directly
+        }));
+      }
+    }
   };
 
   // Get the current prompt from files (if they exist)

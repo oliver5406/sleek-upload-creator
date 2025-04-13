@@ -1,3 +1,4 @@
+
 // src/services/api.ts
 import axios from 'axios';
 import { BatchResponse, BatchStatus, FileWithPreview } from '@/components/FileUploader/types';
@@ -27,14 +28,23 @@ export const uploadBatch = async (
   const formData = new FormData();
   const fileDetails = [];
 
+  // Log prompts before sending to help with debugging
+  console.log("Uploading files with prompts:", files.map(f => ({
+    name: f.file.name,
+    prompt: f.prompt
+  })));
+
   files.forEach(fileObj => {
     formData.append('files[]', fileObj.file);
     fileDetails.push({
       filename: fileObj.file.name,
-      prompt: fileObj.prompt
+      prompt: fileObj.prompt || 'Modern luxury home interior' // Ensure a default prompt
     });
   });
 
+  // Log the file details being sent to API
+  console.log("File details being sent to API:", fileDetails);
+  
   formData.append('file_details', JSON.stringify(fileDetails));
 
   const response = await apiClient.post<BatchResponse>(

@@ -219,8 +219,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
         setIsUploading(false);
         return;
       }
+      
+      const filesToUpload = files.map(file => ({
+        ...file,
+        prompt: file.prompt || globalPrompt || 'Modern luxury home interior'
+      }));
   
-      const response = await uploadBatch(files, token);
+      const response = await uploadBatch(filesToUpload, token);
       
       if (response && response.batch_id) {
         setBatchId(response.batch_id);
@@ -239,7 +244,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
       setIsUploading(false);
       setHasError(true);
     }
-  }, [files, toast, stopPolling, getToken, showIndividualPrompts]);
+  }, [files, toast, stopPolling, getToken, showIndividualPrompts, globalPrompt]);
 
   const pollBatchStatus = useCallback(async (currentBatchId: string) => {
     if (!currentBatchId) return;
