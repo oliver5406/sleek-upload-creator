@@ -48,6 +48,8 @@ const CreateContent: React.FC = () => {
           <FileUploader 
             settingsContext={settings.context}
             useUniformSettings={settings.useUniformSettings}
+            globalPrompt={settings.promptSource === "preset" ? settings.prompt : ""}
+            customPrompt={settings.promptSource === "custom" ? settings.prompt : ""}
           />
         </div>
       </div>

@@ -26,4 +26,6 @@ export interface BatchResponse {
 export interface FileUploaderProps {
     settingsContext?: "single" | "multi";
     useUniformSettings?: boolean;
+    globalPrompt?: string;
+    customPrompt?: string;
 }

@@ -11,7 +11,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const STORAGE_KEY = 'fileUploader_state';
 
-const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniformSettings }) => {
+const FileUploader: React.FC<FileUploaderProps> = ({ 
+  settingsContext, 
+  useUniformSettings,
+  globalPrompt = "",
+  customPrompt = ""
+}) => {
   const { toast } = useToast();
   const { getToken } = useAuth();
   const toastShownRef = useRef(false);
@@ -84,15 +89,16 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
   }, [batchId, processingComplete, files, progress]);
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
+    const prompt = customPrompt || globalPrompt;
     setFiles(prev => {
       if (settingsContext === "single") {
-        return newFiles.slice(0, 1);
+        return newFiles.slice(0, 1).map(file => ({ ...file, prompt }));
       }
-      const updatedFiles = [...prev, ...newFiles];
+      const updatedFiles = [...prev, ...newFiles].map(file => ({ ...file, prompt }));
       return updatedFiles.slice(0, maxFiles);
     });
     setHasError(false);
-  }, [settingsContext, maxFiles]);
+  }, [settingsContext, maxFiles, globalPrompt, customPrompt]);
 
   const removeFile = useCallback((id: string) => {
     setFiles(prev => {
