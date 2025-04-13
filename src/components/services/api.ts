@@ -1,5 +1,4 @@
-
-// src/services/api.ts
+// src/components/services/api.ts
 import axios from 'axios';
 import { BatchResponse, BatchStatus, FileWithPreview } from '@/components/FileUploader/types';
 
@@ -23,29 +22,38 @@ export const clearAuthToken = () => {
 
 export const uploadBatch = async (
   files: FileWithPreview[],
-  token: string // The token you will pass to the function
+  token: string
 ): Promise<BatchResponse> => {
   const formData = new FormData();
   const fileDetails = [];
 
-  // Log prompts before sending to help with debugging
-  console.log("Uploading files with prompts:", files.map(f => ({
+  // Enhanced logging to better debug the prompt issue
+  console.log("📤 Starting upload with files:", files.length);
+  console.log("📝 File prompts being sent:", files.map(f => ({
     name: f.file.name,
-    prompt: f.prompt
+    prompt: f.prompt || "NO PROMPT SET"
   })));
 
   files.forEach(fileObj => {
     formData.append('files[]', fileObj.file);
+    // Ensure each file has a prompt
+    const prompt = fileObj.prompt || 'Modern luxury home interior';
     fileDetails.push({
       filename: fileObj.file.name,
-      prompt: fileObj.prompt || 'Modern luxury home interior' // Ensure a default prompt
+      prompt: prompt
     });
   });
 
   // Log the file details being sent to API
-  console.log("File details being sent to API:", fileDetails);
+  console.log("🔍 File details object being sent to API:", fileDetails);
   
   formData.append('file_details', JSON.stringify(fileDetails));
+
+  // Log raw form data content for debugging
+  console.log("📦 FormData created with file_details appended");
+  
+  // Add a direct header check
+  console.log("🔐 Auth header will be:", `Bearer ${token.substring(0, 5)}...`);
 
   const response = await apiClient.post<BatchResponse>(
     '/upload-batch', 
@@ -58,6 +66,7 @@ export const uploadBatch = async (
     }
   );
 
+  console.log("✅ Upload response received:", response.data);
   return response.data;
 };
 

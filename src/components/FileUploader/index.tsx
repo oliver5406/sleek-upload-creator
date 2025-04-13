@@ -63,14 +63,15 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
   const [hasError, setHasError] = useState(false);
   const [initialLoading, setInitialLoading] = useState(!!initialState.batchId);
 
-  const maxFiles = settingsContext === 'single' ? 1 : 3;
+  const maxFiles = settingsContext === "single" ? 1 : 3;
   
-  const showIndividualPrompts = settingsContext === 'multi' && !useUniformSettings;
+  const showIndividualPrompts = settingsContext === "multi" && !useUniformSettings;
 
   const statusPollingInterval = 5000;
 
   useEffect(() => {
     if (globalPrompt && files.length > 0 && !showIndividualPrompts) {
+      console.log("Updating files with global prompt:", globalPrompt);
       setFiles(prev => prev.map(file => ({
         ...file,
         prompt: globalPrompt
@@ -100,7 +101,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
     setFiles(prev => {
-      if (settingsContext === 'single') {
+      if (settingsContext === "single") {
         const filesWithPrompt = newFiles.slice(0, 1).map(file => ({
           ...file,
           prompt: globalPrompt || file.prompt || 'Modern luxury home interior'
@@ -142,7 +143,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
         file.id === id ? { ...file, prompt } : file
       );
       
-      if (settingsContext === 'single' && prev.length === 1 && onFilesChanged) {
+      if (settingsContext === "single" && prev.length === 1 && onFilesChanged) {
         onFilesChanged(updatedFiles);
       }
       
@@ -220,10 +221,18 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
         return;
       }
       
-      const filesToUpload = files.map(file => ({
-        ...file,
-        prompt: file.prompt || globalPrompt || 'Modern luxury home interior'
-      }));
+      const filesToUpload = files.map(file => {
+        console.log(`File ${file.file.name} prompt:`, file.prompt);
+        return {
+          ...file,
+          prompt: file.prompt || globalPrompt || 'Modern luxury home interior'
+        };
+      });
+      
+      console.log("Files being sent to uploadBatch:", filesToUpload.map(f => ({
+        name: f.file.name,
+        prompt: f.prompt
+      })));
   
       const response = await uploadBatch(filesToUpload, token);
       
@@ -462,7 +471,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ settingsContext, useUniform
   useEffect(() => {
     if (files.length > maxFiles) {
       setFiles(prev => prev.slice(0, maxFiles));
-    } else if (files.length > 0 && (!showIndividualPrompts || settingsContext === 'single') && globalPrompt) {
+    } else if (files.length > 0 && (!showIndividualPrompts || settingsContext === "single") && globalPrompt) {
       setFiles(prev => prev.map(file => ({
         ...file,
         prompt: globalPrompt

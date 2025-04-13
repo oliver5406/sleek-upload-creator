@@ -20,6 +20,7 @@ const CreateContent: React.FC = () => {
   });
 
   const handleSettingsChange = (newSettings: ImageSettingsFormValues) => {
+    console.log("Settings changed:", newSettings);
     setSettings(newSettings);
     
     // Only update file prompts when prompt changes in settings and we should apply it globally
@@ -37,7 +38,10 @@ const CreateContent: React.FC = () => {
 
   // Handle files updates from FileUploader
   const handleFilesUpdate = (updatedFiles: FileWithPreview[]) => {
-    console.log("Files updated in FileUploader:", updatedFiles);
+    console.log("Files updated in FileUploader:", updatedFiles.map(f => ({
+      name: f.file.name,
+      prompt: f.prompt
+    })));
     setFiles(updatedFiles);
     
     // If there's an individual prompt change in single image mode or uniform settings,
@@ -63,6 +67,11 @@ const CreateContent: React.FC = () => {
     }
     return settings.prompt;
   };
+
+  // Added to log and confirm global prompt is being passed correctly
+  useEffect(() => {
+    console.log("Current global prompt:", settings.prompt);
+  }, [settings.prompt]);
 
   return (
     <div className="space-y-6">
