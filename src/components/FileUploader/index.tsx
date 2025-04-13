@@ -89,12 +89,17 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   }, [batchId, processingComplete, files, progress]);
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
-    const prompt = customPrompt || globalPrompt;
+    const currentPrompt = customPrompt || globalPrompt || "";
     setFiles(prev => {
+      const newFilesWithPrompt = newFiles.map(file => ({
+        ...file,
+        prompt: currentPrompt
+      }));
+
       if (settingsContext === "single") {
-        return newFiles.slice(0, 1).map(file => ({ ...file, prompt }));
+        return newFilesWithPrompt.slice(0, 1);
       }
-      const updatedFiles = [...prev, ...newFiles].map(file => ({ ...file, prompt }));
+      const updatedFiles = [...prev, ...newFilesWithPrompt];
       return updatedFiles.slice(0, maxFiles);
     });
     setHasError(false);
