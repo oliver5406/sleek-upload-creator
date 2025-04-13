@@ -59,7 +59,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsCha
       context: "single",
       time: 5,
       promptSource: "preset",
-      prompt: "Modern luxury home interior",
+      prompt: "Generate a smooth, dynamic video with natural motion",
       cfg: 0.7,
       useUniformSettings: true,
       transitionTime: 1,

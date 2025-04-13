@@ -12,7 +12,7 @@ const CreateContent: React.FC = () => {
     time: 5,
     promptSource: "preset",
     prompt: "Modern luxury home interior",
-    cfg: 0.7,
+    cfg: 0.6,
     useUniformSettings: true,
     transitionTime: 1,
   });

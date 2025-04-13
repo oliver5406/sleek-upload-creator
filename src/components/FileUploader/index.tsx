@@ -15,7 +15,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   settingsContext, 
   useUniformSettings,
   globalPrompt = "",
-  customPrompt = ""
+  customPrompt = "",
+  settings = { cfg: 1, time: 5 }  // Provide default values
 }) => {
   const { toast } = useToast();
   const { getToken } = useAuth();
@@ -102,8 +103,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       const newFilesWithPrompt = newFiles.map(file => ({
         ...file,
         prompt: currentPrompt,
-        cfg: settings?.cfg || 0.5,
-        time: settings?.time || 30
+        cfg: settings?.cfg || 1,
+        time: settings?.time || 5
       }));
 
       if (settingsContext === "single") {
