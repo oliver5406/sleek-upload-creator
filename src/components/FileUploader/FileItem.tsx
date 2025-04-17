@@ -1,4 +1,3 @@
-
 // src/components/FileUploader/FileItem.tsx
 import React from 'react';
 import { X } from 'lucide-react';
@@ -23,8 +22,32 @@ const FileItem: React.FC<FileItemProps> = ({
   showPromptField = true
 }) => {
   return (
-    <div className="grid md:grid-cols-2 gap-4 border rounded-lg p-4 bg-card shadow-sm">
-      <div className="space-y-3">
+    <div className={`relative grid ${showPromptField ? 'md:grid-cols-2' : 'md:grid-cols-1'} gap-4 border rounded-lg p-4 bg-card shadow-sm`}>
+      {/* Filename at the top left */}
+      <div className="absolute top-4 left-4 z-10">
+        <p className="text-sm font-medium truncate">{file.file.name}</p>
+      </div>
+      
+      {/* X Button in the top right corner */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 right-2 flex-shrink-0 text-muted-foreground hover:text-destructive z-10"
+        onClick={() => onRemove(file.id)}
+        disabled={disabled}
+      >
+        <X className="h-4 w-4" />
+        <span className="sr-only">Remove file</span>
+      </Button>
+      
+      {/* Prompt label in the top right of the second column */}
+      {showPromptField && (
+        <div className="absolute top-4 left-1/2 z-10">
+          <Label htmlFor={`prompt-${file.id}`} className="font-medium">Prompt</Label>
+        </div>
+      )}
+      
+      <div className={`space-y-3 mt-10 ${!showPromptField ? 'mx-auto max-w-md w-full md:w-3/5' : ''}`}>
         <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
           <img 
             src={file.preview} 
@@ -32,30 +55,16 @@ const FileItem: React.FC<FileItemProps> = ({
             className="w-full h-full object-cover"
           />
         </div>
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium truncate">{file.file.name}</p>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="flex-shrink-0 text-muted-foreground hover:text-destructive"
-            onClick={() => onRemove(file.id)}
-            disabled={disabled}
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Remove file</span>
-          </Button>
-        </div>
       </div>
       
       {showPromptField && (
-        <div className="flex flex-col h-full">
-          <Label htmlFor={`prompt-${file.id}`} className="mb-2">Prompt</Label>
+        <div className="mt-10">
           <Textarea 
             id={`prompt-${file.id}`}
             placeholder="Generate a smooth, dynamic video with natural motion"
             value={file.prompt}
             onChange={(e) => onPromptChange(file.id, e.target.value)}
-            className="flex-grow resize-none"
+            className="resize-none h-[12rem] overflow-auto"
             disabled={disabled}
           />
         </div>

@@ -286,7 +286,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsCha
                         name="time"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Time per Image (seconds)</FormLabel>
+                            <FormLabel>Duration (Seconds)</FormLabel>
                             <div className="flex items-center justify-center gap-4">
                               <Button 
                                 type="button" 

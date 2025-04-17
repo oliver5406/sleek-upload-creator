@@ -5,6 +5,7 @@ import { X, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import FileItem from './FileItem';
 import { FileWithPreview } from './types';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface FileListProps {
   files: FileWithPreview[];
@@ -70,18 +71,21 @@ const FileList: React.FC<FileListProps> = ({
         </div>
       </div>
 
-      <div className="grid gap-6 max-h-[400px] overflow-y-auto px-1 py-2">
-        {files.map((file) => (
-          <FileItem
-            key={file.id}
-            file={file}
-            onRemove={onRemoveFile}
-            onPromptChange={onUpdatePrompt}
-            disabled={isUploading}
-            showPromptField={showIndividualPrompts}
-          />
-        ))}
-      </div>
+      <ScrollArea className="h-[320px] pr-2">
+        <div className="grid gap-6 px-4 py-2">
+          {files.map((file) => (
+            <FileItem
+              key={file.id}
+              file={file}
+              onRemove={onRemoveFile}
+              onPromptChange={onUpdatePrompt}
+              disabled={isUploading}
+              showPromptField={showIndividualPrompts}
+            />
+          ))}
+        </div>
+      </ScrollArea>
+
     </div>
   );
 };
