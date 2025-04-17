@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { FileWithPreview } from './types';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 interface FileItemProps {
   file: FileWithPreview;
@@ -25,16 +26,18 @@ const FileItem: React.FC<FileItemProps> = ({
   return (
     <div className="grid md:grid-cols-2 gap-4 border rounded-lg p-4 bg-card shadow-sm">
       <div className="space-y-3">
-        <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
-          <img 
-            src={file.preview} 
-            alt={file.file.name} 
-            className="h-full w-full object-contain"
-            onError={(e) => {
-              // Fall back to placeholder if image fails to load
-              (e.target as HTMLImageElement).src = '/placeholder.svg';
-            }}
-          />
+        <div className="relative overflow-hidden rounded-lg bg-muted">
+          <AspectRatio ratio={16 / 9} className="bg-muted">
+            <img 
+              src={file.preview} 
+              alt={file.file.name} 
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                // Fall back to placeholder if image fails to load
+                (e.target as HTMLImageElement).src = '/placeholder.svg';
+              }}
+            />
+          </AspectRatio>
         </div>
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium truncate">{file.file.name}</p>
