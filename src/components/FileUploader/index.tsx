@@ -19,7 +19,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   settings = { cfg: 0.6, time: 5, transitionTime: 1 }  // Provide default values
 }) => {
   const { toast } = useToast();
-  const { getToken } = useAuth();
+  const { getToken, isAuthenticated } = useAuth();
   const toastShownRef = useRef(false);
 
   useEffect(() => {
@@ -34,6 +34,15 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const getInitialState = () => {
+    if (!isAuthenticated) {
+      return {
+        batchId: null,
+        processingComplete: false,
+        files: [],
+        progress: 0,
+      };
+    }
+
     try {
       const savedState = localStorage.getItem(STORAGE_KEY);
       if (savedState) {
@@ -84,6 +93,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   const statusPollingInterval = 5000;
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      clearFiles();
+      return;
+    }
+
     if (batchId || files.length > 0) {
       const stateToSave = {
         batchId,
@@ -95,7 +109,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
-  }, [batchId, processingComplete, files, progress]);
+  }, [batchId, processingComplete, files, progress, isAuthenticated]);
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
     const currentPrompt = customPrompt || globalPrompt || "";
