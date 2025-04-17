@@ -35,59 +35,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const getInitialState = () => {
-    if (!isAuthenticated) {
-      return {
-        batchId: null,
-        processingComplete: false,
-        files: [],
-        progress: 0,
-      };
-    }
-
-    try {
-      const savedState = localStorage.getItem(STORAGE_KEY);
-      if (savedState) {
-        const parsedState = JSON.parse(savedState);
-        
-        if (parsedState && 
-            typeof parsedState === 'object' && 
-            (parsedState.batchId || parsedState.files?.length > 0)) {
-          return {
-            batchId: parsedState.batchId || null,
-            processingComplete: parsedState.processingComplete || false,
-            files: Array.isArray(parsedState.files) ? parsedState.files : [],
-            progress: typeof parsedState.progress === 'number' ? parsedState.progress : 0,
-          };
-        }
-      }
-      return {
-        batchId: null,
-        processingComplete: false,
-        files: [],
-        progress: 0,
-      };
-    } catch (e) {
-      console.error('Error loading saved state:', e);
-      localStorage.removeItem(STORAGE_KEY);
-      return {
-        batchId: null,
-        processingComplete: false,
-        files: [],
-        progress: 0,
-      };
-    }
-  };
-  
-  const initialState = getInitialState();
-  
-  const [files, setFiles] = useState<FileWithPreview[]>(initialState.files);
+  const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [progress, setProgress] = useState(initialState.progress);
-  const [batchId, setBatchId] = useState<string | null>(initialState.batchId);
-  const [processingComplete, setProcessingComplete] = useState(initialState.processingComplete);
+  const [progress, setProgress] = useState(0);
+  const [batchId, setBatchId] = useState<string | null>(null);
+  const [processingComplete, setProcessingComplete] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(!!initialState.batchId);
+  const [initialLoading, setInitialLoading] = useState(false);
 
   const maxFiles = settingsContext === "single" ? 1 : 3;
   const showIndividualPrompts = settingsContext === "multi" && !useUniformSettings;
@@ -107,32 +61,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      blobUrlsRef.current.forEach(url => {
-        try {
-          URL.revokeObjectURL(url);
-        } catch (e) {
-          console.error('Failed to revoke blob URL:', e);
-        }
-      });
-      blobUrlsRef.current = [];
-      
-      clearFiles();
-      return;
-    }
-
-    if (batchId || files.length > 0) {
-      const stateToSave = {
-        batchId,
-        processingComplete,
-        files,
-        progress,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }, [batchId, processingComplete, files, progress, isAuthenticated]);
+    clearFiles();
+  }, [isAuthenticated]);
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
     const currentPrompt = customPrompt || globalPrompt || "";
@@ -452,64 +382,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       fileInputRef.current.click();
     }
   }, []);
-
-  useEffect(() => {
-    const validateSavedState = async () => {
-      try {
-        if (!batchId) {
-          setIsUploading(false);
-          setInitialLoading(false);
-          return;
-        }
-        
-        const token = await getToken();
-        if (!token) {
-          clearFiles();
-          return;
-        }
-        
-        const batchStatus = await getBatchStatus(batchId, token);
-        
-        if (!batchStatus || !batchStatus.status) {
-          clearFiles();
-          return;
-        }
-        
-        const status = batchStatus.status;
-        const isProcessing = ['queued', 'processing', 'started'].includes(status);
-        setIsUploading(isProcessing);
-        
-        if (batchStatus.job_details && batchStatus.job_details.length > 0) {
-          const totalProgress = batchStatus.job_details.reduce((sum, job) => {
-            return sum + (job.progress || 0);
-          }, 0);
-          
-          const overallProgress = Math.round(totalProgress / batchStatus.job_details.length);
-          setProgress(overallProgress);
-        }
-        
-        const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
-        if (isFinished) {
-          setProcessingComplete(true);
-          setIsUploading(false);
-        } else if (isProcessing && !pollTimeoutRef.current) {
-          pollBatchStatus(batchId);
-        }
-      } catch (error) {
-        console.error('Error validating saved state:', error);
-        setHasError(true);
-        setIsUploading(false);
-      } finally {
-        setInitialLoading(false);
-      }
-    };
-    
-    if (batchId) {
-      validateSavedState();
-    } else {
-      setInitialLoading(false);
-    }
-  }, [batchId, getToken, clearFiles, pollBatchStatus]);
 
   useEffect(() => {
     if (files.length > maxFiles) {

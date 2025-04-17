@@ -19,7 +19,7 @@ const CreateContent: React.FC = () => {
     transitionTime: 1,
   });
 
-  // Force clear local storage when component mounts or authentication changes
+  // Force clear local storage when component mounts or when authentication state changes
   useEffect(() => {
     localStorage.removeItem('fileUploader_state');
   }, [isAuthenticated]);
