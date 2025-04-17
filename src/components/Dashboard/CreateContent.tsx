@@ -1,13 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Settings } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import FileUploader from '@/components/FileUploader/index';
 import SettingsPanel, { ImageSettingsFormValues } from './SettingsPanel';
-import { useAuth } from '@/context/AuthContext';
 
 const CreateContent: React.FC = () => {
-  const { isAuthenticated } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [settings, setSettings] = useState<ImageSettingsFormValues>({
     context: "single",
@@ -18,13 +16,6 @@ const CreateContent: React.FC = () => {
     useUniformSettings: true,
     transitionTime: 1,
   });
-
-  // Clear local storage when first authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      localStorage.removeItem('fileUploader_state');
-    }
-  }, [isAuthenticated]);
 
   const handleSettingsChange = (newSettings: ImageSettingsFormValues) => {
     setSettings(newSettings);
