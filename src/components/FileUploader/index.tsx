@@ -16,12 +16,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   useUniformSettings,
   globalPrompt = "",
   customPrompt = "",
-  settings = { cfg: 0.6, time: 5, transitionTime: 1 }
+  settings = { cfg: 0.6, time: 5, transitionTime: 1 }  // Provide default values
 }) => {
   const { toast } = useToast();
   const { getToken, isAuthenticated } = useAuth();
   const toastShownRef = useRef(false);
-  const blobUrlsRef = useRef<string[]>([]);
 
   useEffect(() => {
     const currentPrompt = customPrompt || globalPrompt || "";
@@ -30,18 +29,63 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       prompt: currentPrompt
     })));
   }, [globalPrompt, customPrompt]);
-
   const initialCheckDoneRef = useRef(false);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [files, setFiles] = useState<FileWithPreview[]>([]);
+  const getInitialState = () => {
+    if (!isAuthenticated) {
+      return {
+        batchId: null,
+        processingComplete: false,
+        files: [],
+        progress: 0,
+      };
+    }
+
+    try {
+      const savedState = localStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        
+        if (parsedState && 
+            typeof parsedState === 'object' && 
+            (parsedState.batchId || parsedState.files?.length > 0)) {
+          return {
+            batchId: parsedState.batchId || null,
+            processingComplete: parsedState.processingComplete || false,
+            files: Array.isArray(parsedState.files) ? parsedState.files : [],
+            progress: typeof parsedState.progress === 'number' ? parsedState.progress : 0,
+          };
+        }
+      }
+      return {
+        batchId: null,
+        processingComplete: false,
+        files: [],
+        progress: 0,
+      };
+    } catch (e) {
+      console.error('Error loading saved state:', e);
+      localStorage.removeItem(STORAGE_KEY);
+      return {
+        batchId: null,
+        processingComplete: false,
+        files: [],
+        progress: 0,
+      };
+    }
+  };
+  
+  const initialState = getInitialState();
+  
+  const [files, setFiles] = useState<FileWithPreview[]>(initialState.files);
   const [isUploading, setIsUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [batchId, setBatchId] = useState<string | null>(null);
-  const [processingComplete, setProcessingComplete] = useState(false);
+  const [progress, setProgress] = useState(initialState.progress);
+  const [batchId, setBatchId] = useState<string | null>(initialState.batchId);
+  const [processingComplete, setProcessingComplete] = useState(initialState.processingComplete);
   const [hasError, setHasError] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(!!initialState.batchId);
 
   const maxFiles = settingsContext === "single" ? 1 : 3;
   const showIndividualPrompts = settingsContext === "multi" && !useUniformSettings;
@@ -49,34 +93,33 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   const statusPollingInterval = 5000;
 
   useEffect(() => {
-    return () => {
-      blobUrlsRef.current.forEach(url => {
-        try {
-          URL.revokeObjectURL(url);
-        } catch (e) {
-          console.error('Failed to revoke blob URL:', e);
-        }
-      });
-    };
-  }, []);
+    if (!isAuthenticated) {
+      clearFiles();
+      return;
+    }
 
-  useEffect(() => {
-    clearFiles();
-  }, [isAuthenticated]);
+    if (batchId || files.length > 0) {
+      const stateToSave = {
+        batchId,
+        processingComplete,
+        files,
+        progress,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, [batchId, processingComplete, files, progress, isAuthenticated]);
 
   const addFiles = useCallback((newFiles: FileWithPreview[]) => {
     const currentPrompt = customPrompt || globalPrompt || "";
     setFiles(prev => {
-      const newFilesWithPrompt = newFiles.map(file => {
-        blobUrlsRef.current.push(file.preview);
-        
-        return {
-          ...file,
-          prompt: currentPrompt,
-          cfg: settings.cfg,
-          time: settings.time
-        };
-      });
+      const newFilesWithPrompt = newFiles.map(file => ({
+        ...file,
+        prompt: currentPrompt,
+        cfg: settings.cfg,
+        time: settings.time
+      }));
 
       if (settingsContext === "single") {
         return newFilesWithPrompt.slice(0, 1);
@@ -89,19 +132,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
   const removeFile = useCallback((id: string) => {
     setFiles(prev => {
-      const fileToRemove = prev.find(file => file.id === id);
-      if (fileToRemove) {
-        try {
-          const urlIndex = blobUrlsRef.current.indexOf(fileToRemove.preview);
-          if (urlIndex >= 0) {
-            URL.revokeObjectURL(fileToRemove.preview);
-            blobUrlsRef.current.splice(urlIndex, 1);
-          }
-        } catch (e) {
-          console.error('Failed to revoke blob URL:', e);
-        }
-      }
-      
       const updatedFiles = prev.filter(file => file.id !== id);
       if (updatedFiles.length === 0) {
         setBatchId(null);
@@ -123,15 +153,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   }, []);
 
   const clearFiles = useCallback(() => {
-    files.forEach(file => {
-      try {
-        URL.revokeObjectURL(file.preview);
-      } catch (e) {
-        console.error('Failed to revoke blob URL:', e);
-      }
-    });
-    blobUrlsRef.current = [];
-    
     setFiles([]);
     setBatchId(null);
     setProcessingComplete(false);
@@ -149,7 +170,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     toastShownRef.current = false;
     initialCheckDoneRef.current = true;
     setInitialLoading(false);
-  }, [files]);
+  }, []);
 
   const stopPolling = useCallback(() => {
     if (pollTimeoutRef.current) {
@@ -384,6 +405,64 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   }, []);
 
   useEffect(() => {
+    const validateSavedState = async () => {
+      try {
+        if (!batchId) {
+          setIsUploading(false);
+          setInitialLoading(false);
+          return;
+        }
+        
+        const token = await getToken();
+        if (!token) {
+          clearFiles();
+          return;
+        }
+        
+        const batchStatus = await getBatchStatus(batchId, token);
+        
+        if (!batchStatus || !batchStatus.status) {
+          clearFiles();
+          return;
+        }
+        
+        const status = batchStatus.status;
+        const isProcessing = ['queued', 'processing', 'started'].includes(status);
+        setIsUploading(isProcessing);
+        
+        if (batchStatus.job_details && batchStatus.job_details.length > 0) {
+          const totalProgress = batchStatus.job_details.reduce((sum, job) => {
+            return sum + (job.progress || 0);
+          }, 0);
+          
+          const overallProgress = Math.round(totalProgress / batchStatus.job_details.length);
+          setProgress(overallProgress);
+        }
+        
+        const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
+        if (isFinished) {
+          setProcessingComplete(true);
+          setIsUploading(false);
+        } else if (isProcessing && !pollTimeoutRef.current) {
+          pollBatchStatus(batchId);
+        }
+      } catch (error) {
+        console.error('Error validating saved state:', error);
+        setHasError(true);
+        setIsUploading(false);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    
+    if (batchId) {
+      validateSavedState();
+    } else {
+      setInitialLoading(false);
+    }
+  }, [batchId, getToken, clearFiles, pollBatchStatus]);
+
+  useEffect(() => {
     if (files.length > maxFiles) {
       setFiles(prev => prev.slice(0, maxFiles));
     }
@@ -426,13 +505,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           
           const processedFiles = Array.from(newFiles).map(file => {
             const id = Math.random().toString(36).substring(2, 9);
-            const previewUrl = URL.createObjectURL(file);
-            blobUrlsRef.current.push(previewUrl);
-            
             return {
               file,
               id,
-              preview: previewUrl,
+              preview: URL.createObjectURL(file),
               prompt: ''
             };
           });

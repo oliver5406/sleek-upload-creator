@@ -19,9 +19,11 @@ const CreateContent: React.FC = () => {
     transitionTime: 1,
   });
 
-  // Force clear local storage when component mounts or when authentication state changes
+  // Clear local storage when first authenticated
   useEffect(() => {
-    localStorage.removeItem('fileUploader_state');
+    if (isAuthenticated) {
+      localStorage.removeItem('fileUploader_state');
+    }
   }, [isAuthenticated]);
 
   const handleSettingsChange = (newSettings: ImageSettingsFormValues) => {
