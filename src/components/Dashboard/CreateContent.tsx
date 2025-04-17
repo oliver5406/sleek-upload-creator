@@ -59,6 +59,7 @@ const CreateContent: React.FC = () => {
             useUniformSettings={settings.useUniformSettings}
             globalPrompt={settings.promptSource === "preset" ? settings.prompt : ""}
             customPrompt={settings.promptSource === "custom" ? settings.prompt : ""}
+            outputFilename={settings.outputFilename} // Add this line
             settings={{
               cfg: settings.cfg,
               time: settings.time,

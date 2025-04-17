@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, ListFilter, SlidersHorizontal, Settings, ImageIcon, Images } from 'lucide-react';
+import { Clock, ListFilter, SlidersHorizontal, Settings, ImageIcon, Images, FileText } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -31,6 +31,7 @@ const imageSettingsSchema = z.object({
   cfg: z.number().min(0).max(1),
   useUniformSettings: z.boolean().default(true),
   transitionTime: z.number().min(0.1).max(10),
+  outputFilename: z.string().default("my_video"),
 });
 
 type ImageSettingsFormValues = z.infer<typeof imageSettingsSchema>;
@@ -63,6 +64,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsCha
       cfg: 0.7,
       useUniformSettings: true,
       transitionTime: 1,
+      outputFilename: "my_video", // Make sure this is included
     },
   });
 
@@ -85,6 +87,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsCha
     `}>
       <Form {...form}>
         <div className="space-y-6">
+          {/* Existing context buttons */}
           <div className="flex items-center justify-center gap-2 mb-4">
             <Button
               type="button"
@@ -107,6 +110,25 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsCha
               Multi Image
             </Button>
           </div>
+
+          {/* Output filename field moved below the context buttons */}
+          <FormField
+            control={form.control}
+            name="outputFilename"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Output Filename
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter output filename"
+                    {...field}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
 
           <div className="space-y-4">
             {currentContext === "single" ? (

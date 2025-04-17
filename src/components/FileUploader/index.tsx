@@ -16,6 +16,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   useUniformSettings,
   globalPrompt = "",
   customPrompt = "",
+  outputFilename = "property_videos", // Add default value for outputFilename
   settings = { cfg: 0.6, time: 5, transitionTime: 1 }  // Provide default values
 }) => {
   const { toast } = useToast();
@@ -279,7 +280,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       if (isFinished) {
         stopPolling();
         setIsUploading(false);
-        setProcessingComplete(true);
+        
+        // Only set processingComplete to true if status is 'completed' or 'partially_completed'
+        // This ensures the download button only appears when there's actually something to download
+        setProcessingComplete(status === 'completed' || status === 'partially_completed');
         
         if (!toastShownRef.current) {
           if (status === 'completed') {
@@ -364,7 +368,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         .then(blob => {
           const url = window.URL.createObjectURL(blob);
           link.setAttribute('href', url);
-          link.setAttribute('download', `property_videos_${batchId}.zip`);
+          // Use the custom filename if provided, otherwise use default with batch ID
+          const filename = outputFilename ? `${outputFilename}.zip` : `property_videos_${batchId}.zip`;
+          link.setAttribute('download', filename);
           document.body.appendChild(link);
           link.click();
           link.remove();
@@ -388,7 +394,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         variant: "destructive"
       });
     }
-  }, [batchId, getToken, toast]);
+  }, [batchId, getToken, toast, outputFilename]); // Add outputFilename to dependencies
 
   useEffect(() => {
     return () => {
@@ -441,7 +447,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         
         const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
         if (isFinished) {
-          setProcessingComplete(true);
+          // Only set processingComplete to true if status is 'completed' or 'partially_completed'
+          setProcessingComplete(status === 'completed' || status === 'partially_completed');
           setIsUploading(false);
         } else if (isProcessing && !pollTimeoutRef.current) {
           pollBatchStatus(batchId);

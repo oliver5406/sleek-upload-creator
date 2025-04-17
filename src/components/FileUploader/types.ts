@@ -29,6 +29,7 @@ export interface FileUploaderProps {
     useUniformSettings?: boolean;
     globalPrompt?: string;
     customPrompt?: string;
+    outputFilename?: string; // Add this line
     settings?: {
         cfg: number;
         time: number;
