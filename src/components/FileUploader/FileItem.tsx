@@ -29,7 +29,11 @@ const FileItem: React.FC<FileItemProps> = ({
           <img 
             src={file.preview} 
             alt={file.file.name} 
-            className="w-full h-full object-cover"
+            className="h-full w-full object-contain"
+            onError={(e) => {
+              // Fall back to placeholder if image fails to load
+              (e.target as HTMLImageElement).src = '/placeholder.svg';
+            }}
           />
         </div>
         <div className="flex items-center justify-between">
