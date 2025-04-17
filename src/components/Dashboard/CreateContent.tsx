@@ -40,7 +40,7 @@ const CreateContent: React.FC = () => {
         `}>
           <SettingsPanel 
             isMenuOpen={isMenuOpen} 
-            onSettingsChange={handleSettingsChange} 
+            onSettingsChange={handleSettingsChange}
           />
         </div>
         
@@ -52,7 +52,8 @@ const CreateContent: React.FC = () => {
             customPrompt={settings.promptSource === "custom" ? settings.prompt : ""}
             settings={{
               cfg: settings.cfg,
-              time: settings.time
+              time: settings.time,
+              transitionTime: settings.transitionTime
             }}
           />
         </div>

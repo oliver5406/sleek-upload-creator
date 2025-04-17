@@ -16,7 +16,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   useUniformSettings,
   globalPrompt = "",
   customPrompt = "",
-  settings = { cfg: 1, time: 5 }  // Provide default values
+  settings = { cfg: 0.6, time: 5, transitionTime: 1 }  // Provide default values
 }) => {
   const { toast } = useToast();
   const { getToken } = useAuth();
@@ -103,8 +103,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       const newFilesWithPrompt = newFiles.map(file => ({
         ...file,
         prompt: currentPrompt,
-        cfg: settings?.cfg || 1,
-        time: settings?.time || 5
+        cfg: settings.cfg,
+        time: settings.time
       }));
 
       if (settingsContext === "single") {
@@ -114,7 +114,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       return updatedFiles.slice(0, maxFiles);
     });
     setHasError(false);
-  }, [settingsContext, maxFiles, globalPrompt, customPrompt]);
+  }, [settingsContext, maxFiles, globalPrompt, customPrompt, settings]);
 
   const removeFile = useCallback((id: string) => {
     setFiles(prev => {

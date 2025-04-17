@@ -1,4 +1,3 @@
-
 // src/components/FileUploader/types.ts
 export type FileWithPreview = {
     file: File;
@@ -33,5 +32,6 @@ export interface FileUploaderProps {
     settings?: {
         cfg: number;
         time: number;
+        transitionTime?: number;
     };
 }
