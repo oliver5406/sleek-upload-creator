@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Download, Home, FilmIcon } from 'lucide-react';
+import { Download, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
@@ -9,11 +9,8 @@ interface UploadProgressProps {
   progress: number;
   batchId: string | null;
   onDownload: () => void;
-  onDownloadSeparate?: (index: number) => void;
   onUpload: () => void;
   hasError?: boolean;
-  videoUrls?: string[];
-  isCombined?: boolean;
 }
 
 const UploadProgress: React.FC<UploadProgressProps> = ({
@@ -21,17 +18,14 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
   progress,
   batchId,
   onDownload,
-  onDownloadSeparate,
   onUpload,
-  hasError = false,
-  videoUrls = [],
-  isCombined = false
+  hasError = false
 }) => {
   if (isUploading) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Creating property video{!isCombined ? 's' : ''}...</span>
+          <span className="text-sm font-medium">Creating property video...</span>
           <span className="text-sm font-medium">{progress ? `${Math.round(progress)}%` : 'Processing...'}</span>
         </div>
         <Progress 
@@ -71,42 +65,17 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
     );
   }
 
-  if (batchId && !isCombined && videoUrls.length > 0) {
-    return (
-      <div className="space-y-4">
-        <div className="grid gap-3">
-          {videoUrls.map((_, index) => (
-            <Button
-              key={index}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
-              onClick={() => onDownloadSeparate?.(index)}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Download Video {index + 1}
-            </Button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   if (batchId) {
     return (
-      <Button 
-        className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600" 
-        onClick={onDownload}
-      >
-        <FilmIcon className="mr-2 h-4 w-4" />
-        Download {isCombined ? 'Combined' : 'Property'} Video
+      <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600" onClick={onDownload}>
+        <Download className="mr-2 h-4 w-4" />
+        Download Property Videos
       </Button>
     );
   }
 
   return (
-    <Button 
-      className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600" 
-      onClick={onUpload}
-    >
+    <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600" onClick={onUpload}>
       <Home className="mr-2 h-4 w-4" />
       Create Property Video
     </Button>
