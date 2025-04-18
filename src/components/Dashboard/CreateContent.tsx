@@ -16,6 +16,7 @@ const CreateContent: React.FC = () => {
     prompt: "Modern luxury home interior",
     cfg: 0.6,
     useUniformSettings: true,
+    isCombined: false,
     transitionTime: 1,
   });
 
@@ -59,11 +60,12 @@ const CreateContent: React.FC = () => {
             useUniformSettings={settings.useUniformSettings}
             globalPrompt={settings.promptSource === "preset" ? settings.prompt : ""}
             customPrompt={settings.promptSource === "custom" ? settings.prompt : ""}
-            outputFilename={settings.outputFilename} // Add this line
+            outputFilename={settings.outputFilename}
             settings={{
               cfg: settings.cfg,
               time: settings.time,
-              transitionTime: settings.transitionTime
+              transitionTime: settings.transitionTime,
+              isCombined: settings.isCombined
             }}
           />
         </div>

@@ -1,3 +1,4 @@
+
 // src/components/FileUploader/types.ts
 export type FileWithPreview = {
     file: File;
@@ -29,10 +30,11 @@ export interface FileUploaderProps {
     useUniformSettings?: boolean;
     globalPrompt?: string;
     customPrompt?: string;
-    outputFilename?: string; // Add this line
+    outputFilename?: string;
     settings?: {
         cfg: number;
         time: number;
         transitionTime?: number;
+        isCombined?: boolean;  // Add this line
     };
 }

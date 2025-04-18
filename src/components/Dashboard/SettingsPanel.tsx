@@ -30,6 +30,7 @@ const imageSettingsSchema = z.object({
   prompt: z.string().min(1),
   cfg: z.number().min(0).max(1),
   useUniformSettings: z.boolean().default(true),
+  isCombined: z.boolean().default(false),
   transitionTime: z.number().min(0.1).max(10),
   outputFilename: z.string().default("my_video"),
 });
@@ -63,14 +64,16 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsCha
       prompt: "Generate a smooth, dynamic video with natural motion",
       cfg: 0.7,
       useUniformSettings: true,
+      isCombined: false,
       transitionTime: 1,
-      outputFilename: "my_video", // Make sure this is included
+      outputFilename: "my_video",
     },
   });
 
   const currentContext = form.watch("context");
   const useUniformSettings = form.watch("useUniformSettings");
   const promptSource = form.watch("promptSource");
+  const isCombined = form.watch("isCombined");
 
   React.useEffect(() => {
     const subscription = form.watch((value) => {
@@ -255,26 +258,46 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsCha
               <>
                 <FormField
                   control={form.control}
-                  name="transitionTime"
+                  name="isCombined"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" /> Transition Time (seconds)
-                      </FormLabel>
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Combine videos into one</FormLabel>
+                      </div>
                       <FormControl>
-                        <Slider
-                          min={0.1}
-                          max={10}
-                          step={0.1}
-                          value={[field.value]}
-                          onValueChange={(value) => field.onChange(value[0])}
-                          className="py-4"
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
                         />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground">{field.value.toFixed(1)}s</p>
                     </FormItem>
                   )}
                 />
+
+                {isCombined && (
+                  <FormField
+                    control={form.control}
+                    name="transitionTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Clock className="h-4 w-4" /> Transition Time (seconds)
+                        </FormLabel>
+                        <FormControl>
+                          <Slider
+                            min={0.1}
+                            max={10}
+                            step={0.1}
+                            value={[field.value]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                            className="py-4"
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">{field.value.toFixed(1)}s</p>
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}
