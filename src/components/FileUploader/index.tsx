@@ -291,16 +291,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
               title: "Property video created!",
               description: "Your property tour video is ready to download",
             });
-          } else if (status === 'failed' || status === 'error') {
+          } else {
             toast({
               title: "Processing failed",
               description: "There was an error processing your video.",
               variant: "destructive"
-            });
-          } else if (status === 'partially_completed') {
-            toast({
-              title: "Processing partially completed",
-              description: "Some videos were processed successfully, others failed.",
             });
           }
           toastShownRef.current = true;
