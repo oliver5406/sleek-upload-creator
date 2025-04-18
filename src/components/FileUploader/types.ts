@@ -22,6 +22,7 @@ export type BatchStatus = {
   
 export interface BatchResponse {
     batch_id: string;
+    video_urls?: string[];
 }
 
 export interface FileUploaderProps {
@@ -29,10 +30,11 @@ export interface FileUploaderProps {
     useUniformSettings?: boolean;
     globalPrompt?: string;
     customPrompt?: string;
-    outputFilename?: string; // Add this line
+    outputFilename?: string;
     settings?: {
         cfg: number;
         time: number;
         transitionTime?: number;
+        combineVideos?: boolean;
     };
 }

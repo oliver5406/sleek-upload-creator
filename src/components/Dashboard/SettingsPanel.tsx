@@ -32,6 +32,7 @@ const imageSettingsSchema = z.object({
   useUniformSettings: z.boolean().default(true),
   transitionTime: z.number().min(0.1).max(10),
   outputFilename: z.string().default("my_video"),
+  combineVideos: z.boolean().default(false),
 });
 
 type ImageSettingsFormValues = z.infer<typeof imageSettingsSchema>;
@@ -65,6 +66,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsCha
       useUniformSettings: true,
       transitionTime: 1,
       outputFilename: "my_video", // Make sure this is included
+      combineVideos: false,
     },
   });
 
@@ -259,7 +261,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsCha
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" /> Transition Time (seconds)
+                        <Clock className="h-4 w-4" /> Transition Time ({field.value.toFixed(1)}s)
                       </FormLabel>
                       <FormControl>
                         <Slider
@@ -271,18 +273,21 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isMenuOpen, onSettingsCha
                           className="py-4"
                         />
                       </FormControl>
-                      <p className="text-xs text-muted-foreground">{field.value.toFixed(1)}s</p>
+                      <p className="text-xs text-muted-foreground">Time between transitions in seconds</p>
                     </FormItem>
                   )}
                 />
 
                 <FormField
                   control={form.control}
-                  name="useUniformSettings"
+                  name="combineVideos"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                       <div className="space-y-0.5">
-                        <FormLabel>Use same settings for all images</FormLabel>
+                        <FormLabel>Combine videos into one</FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Create a single video with transitions
+                        </p>
                       </div>
                       <FormControl>
                         <Switch

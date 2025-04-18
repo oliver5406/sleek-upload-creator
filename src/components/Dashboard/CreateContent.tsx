@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,8 @@ const CreateContent: React.FC = () => {
     cfg: 0.6,
     useUniformSettings: true,
     transitionTime: 1,
+    outputFilename: "property_video",
+    combineVideos: false,
   });
 
   // Clear local storage when first authenticated
@@ -59,11 +60,12 @@ const CreateContent: React.FC = () => {
             useUniformSettings={settings.useUniformSettings}
             globalPrompt={settings.promptSource === "preset" ? settings.prompt : ""}
             customPrompt={settings.promptSource === "custom" ? settings.prompt : ""}
-            outputFilename={settings.outputFilename} // Add this line
+            outputFilename={settings.outputFilename}
             settings={{
               cfg: settings.cfg,
               time: settings.time,
-              transitionTime: settings.transitionTime
+              transitionTime: settings.transitionTime,
+              combineVideos: settings.combineVideos
             }}
           />
         </div>
