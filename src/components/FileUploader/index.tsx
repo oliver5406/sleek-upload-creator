@@ -16,8 +16,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   useUniformSettings,
   globalPrompt = "",
   customPrompt = "",
-  outputFilename = "property_videos", // Add default value for outputFilename
-  settings = { cfg: 0.6, time: 5, transitionTime: 1 }  // Provide default values
+  outputFilename = "property_videos", 
+  settings = { cfg: 0.6, time: 5, transitionTime: 1, isCombined: false }  // Make sure isCombined is included here
 }) => {
   const { toast } = useToast();
   const { getToken, isAuthenticated } = useAuth();
@@ -223,7 +223,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         return;
       }
   
-      const response = await uploadBatch(files, token);
+      const response = await uploadBatch(files, token, settings.isCombined);
       
       if (response && response.batch_id) {
         setBatchId(response.batch_id);
@@ -242,7 +242,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       setIsUploading(false);
       setHasError(true);
     }
-  }, [files, toast, stopPolling, getToken, showIndividualPrompts]);
+  }, [files, toast, stopPolling, getToken, showIndividualPrompts, settings.isCombined]);
 
   const pollBatchStatus = useCallback(async (currentBatchId: string) => {
     if (!currentBatchId) return;
@@ -389,7 +389,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         variant: "destructive"
       });
     }
-  }, [batchId, getToken, toast, outputFilename]); // Add outputFilename to dependencies
+  }, [batchId, getToken, toast, outputFilename]);
 
   useEffect(() => {
     return () => {
