@@ -22,7 +22,8 @@ export const clearAuthToken = () => {
 
 export const uploadBatch = async (
   files: FileWithPreview[],
-  token: string // The token you will pass to the function
+  token: string, // The token you will pass to the function
+  isCombined: boolean = false // New flag for combining videos
 ): Promise<BatchResponse> => {
   const formData = new FormData();
   const fileDetails = [];
@@ -38,6 +39,8 @@ export const uploadBatch = async (
   });
 
   formData.append('file_details', JSON.stringify(fileDetails));
+  // Add the isCombined flag to the request
+  formData.append('is_combined', String(isCombined));
 
   const response = await apiClient.post<BatchResponse>(
     '/upload-batch', 
@@ -71,5 +74,3 @@ export const getBatchStatus = async (
 export const getDownloadUrl = (batchId: string): string => {
   return `${API_URL}/download-all/${batchId}`;
 };
-
-
