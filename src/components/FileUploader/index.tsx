@@ -255,7 +255,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         setIsUploading(false);
         return;
       }
-
+  
       const batchStatus = await getBatchStatus(currentBatchId, token);
       
       if (!batchStatus) {
@@ -275,30 +275,21 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       
       setHasError(false);
       
-      const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
-      
-      if (isFinished) {
+      // Simplified status check - only 'completed' or 'processing'
+      if (status === 'completed') {
         stopPolling();
         setIsUploading(false);
-        
         setProcessingComplete(true);
         
         if (!toastShownRef.current) {
-          if (status === 'completed') {
-            toast({
-              title: "Property video created!",
-              description: "Your property tour video is ready to download",
-            });
-          } else {
-            toast({
-              title: "Processing failed",
-              description: "There was an error processing your video.",
-              variant: "destructive"
-            });
-          }
+          toast({
+            title: "Property video created!",
+            description: "Your property tour video is ready to download",
+          });
           toastShownRef.current = true;
         }
       } else {
+        // Assume any other status is 'processing'
         pollTimeoutRef.current = setTimeout(() => {
           pollBatchStatus(currentBatchId);
         }, statusPollingInterval);
@@ -345,11 +336,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         description: "Your property videos are being downloaded.",
       });
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = await downloadUrl;
       link.setAttribute('download', '');
       link.setAttribute('target', '_blank');
       
-      fetch(downloadUrl, {
+      fetch(await downloadUrl, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -426,7 +417,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         }
         
         const status = batchStatus.status;
-        const isProcessing = ['queued', 'processing', 'started'].includes(status);
+        // Simplified status check - only 'completed' or 'processing'
+        const isProcessing = status !== 'completed';
         setIsUploading(isProcessing);
         
         if (batchStatus.job_details && batchStatus.job_details.length > 0) {
@@ -438,9 +430,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           setProgress(overallProgress);
         }
         
-        const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
-        if (isFinished) {
-          // Only set processingComplete to true if status is 'completed' or 'partially_completed'
+        if (status === 'completed') {
           setProcessingComplete(true);
           setIsUploading(false);
         } else if (isProcessing && !pollTimeoutRef.current) {

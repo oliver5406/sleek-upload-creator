@@ -71,6 +71,10 @@ export const getBatchStatus = async (
   return response.data;
 };
 
-export const getDownloadUrl = (batchId: string): string => {
+export const getDownloadUrl = async (batchId: string): Promise<string> => {
+  // Simulate a small delay to ensure the URL is ready
+  // You can remove this if your backend already has a natural delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
   return `${API_URL}/download-all/${batchId}`;
 };
