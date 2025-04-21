@@ -281,9 +281,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         stopPolling();
         setIsUploading(false);
         
-        // Only set processingComplete to true if status is 'completed' or 'partially_completed'
-        // This ensures the download button only appears when there's actually something to download
-        setProcessingComplete(status === 'completed' || status === 'partially_completed');
+        setProcessingComplete(true);
         
         if (!toastShownRef.current) {
           if (status === 'completed') {
@@ -443,7 +441,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         const isFinished = ['completed', 'failed', 'error', 'partially_completed'].includes(status);
         if (isFinished) {
           // Only set processingComplete to true if status is 'completed' or 'partially_completed'
-          setProcessingComplete(status === 'completed' || status === 'partially_completed');
+          setProcessingComplete(true);
           setIsUploading(false);
         } else if (isProcessing && !pollTimeoutRef.current) {
           pollBatchStatus(batchId);
