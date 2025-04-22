@@ -87,6 +87,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   const [processingComplete, setProcessingComplete] = useState(initialState.processingComplete);
   const [hasError, setHasError] = useState(false);
   const [initialLoading, setInitialLoading] = useState(!!initialState.batchId);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const maxFiles = settingsContext === "single" ? 1 : 3;
   const showIndividualPrompts = settingsContext === "multi" && !useUniformSettings;
@@ -168,6 +170,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     
     setProgress(0);
     setIsUploading(false);
+    setIsDownloading(false);
+    setDownloadProgress(0);
     toastShownRef.current = false;
     initialCheckDoneRef.current = true;
     setInitialLoading(false);
@@ -319,6 +323,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     if (!batchId) return;
   
     try {
+      setIsDownloading(true);
+      setDownloadProgress(-1); // Use negative value to indicate preparation phase
+      
       const token = await getToken();
       if (!token) {
         toast({
@@ -326,6 +333,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           description: "You are not authenticated. Please log in again.",
           variant: "destructive"
         });
+        setIsDownloading(false);
         return;
       }
 
@@ -335,11 +343,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         title: "Download started",
         description: "Your property videos are being downloaded.",
       });
-      const link = document.createElement('a');
-      link.href = await downloadUrl;
-      link.setAttribute('download', '');
-      link.setAttribute('target', '_blank');
       
+      // Fetch with progress tracking
       fetch(await downloadUrl, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -347,10 +352,55 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       })
         .then(res => {
           if (!res.ok) throw new Error('Download failed');
-          return res.blob();
+          
+          // Get total size for progress calculation
+          const contentLength = res.headers.get('content-length');
+          const total = contentLength ? parseInt(contentLength, 10) : 0;
+          
+          // Create a reader to read the response body
+          const reader = res.body?.getReader();
+          if (!reader) throw new Error('Reader not available');
+          
+          // Set progress to 0 now that we're starting the actual download
+          setDownloadProgress(0);
+          
+          let receivedLength = 0;
+          
+          // Read the data chunks and update progress
+          return new ReadableStream({
+            start(controller) {
+              function push() {
+                reader.read().then(({ done, value }) => {
+                  if (done) {
+                    controller.close();
+                    return;
+                  }
+                  
+                  receivedLength += value.length;
+                  
+                  // Update progress percentage
+                  if (total) {
+                    const percentage = Math.round((receivedLength / total) * 100);
+                    setDownloadProgress(percentage);
+                  }
+                  
+                  controller.enqueue(value);
+                  push();
+                }).catch(error => {
+                  console.error(error);
+                  controller.error(error);
+                });
+              }
+              
+              push();
+            }
+          });
         })
+        .then(stream => new Response(stream))
+        .then(response => response.blob())
         .then(blob => {
           const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
           link.setAttribute('href', url);
           // Use the custom filename if provided, otherwise use default with batch ID
           const filename = outputFilename ? `${outputFilename}.zip` : `property_videos_${batchId}.zip`;
@@ -359,10 +409,19 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           link.click();
           link.remove();
           window.URL.revokeObjectURL(url);
+          
+          // Set progress to 100% when complete
+          setDownloadProgress(100);
+          
+          // Reset download state after a short delay (to show completion)
+          setTimeout(() => {
+            setIsDownloading(false);
+          }, 2000);
         })
         .catch(err => {
           console.error('Download error:', err);
           setHasError(true);
+          setIsDownloading(false);
           toast({
             title: "Download failed",
             description: "There was an error downloading your video.",
@@ -372,6 +431,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     } catch (error) {
       console.error('Token retrieval error:', error);
       setHasError(true);
+      setIsDownloading(false);
       toast({
         title: "Authentication error",
         description: "Failed to authenticate for download.",
@@ -510,7 +570,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       
       <FileDropZone 
         onFilesAdded={addFiles}
-        isUploading={isUploading}
+        isUploading={isUploading || isDownloading}
         hasFiles={files.length > 0}
         currentFileCount={files.length}
         maxFiles={maxFiles}
@@ -523,7 +583,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           onUpdatePrompt={updateFilePrompt}
           onClearAll={clearFiles}
           onBrowseFiles={handleBrowseFiles}
-          isUploading={isUploading}
+          isUploading={isUploading || isDownloading}
           hasVideo={!!batchId && processingComplete}
           showIndividualPrompts={showIndividualPrompts}
           maxFiles={maxFiles}
@@ -538,6 +598,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           onDownload={downloadVideo}
           onUpload={uploadFiles}
           hasError={hasError}
+          isDownloading={isDownloading}
+          downloadProgress={downloadProgress}
         />
       )}
     </div>

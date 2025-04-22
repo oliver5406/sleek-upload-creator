@@ -1,9 +1,7 @@
-
 import React, { useState } from 'react';
 import { Download, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { getDownloadUrl } from '@/components/services/api';
 
 interface UploadProgressProps {
   isUploading: boolean;
@@ -12,6 +10,8 @@ interface UploadProgressProps {
   onDownload: () => void;
   onUpload: () => void;
   hasError?: boolean;
+  isDownloading?: boolean;
+  downloadProgress?: number;
 }
 
 const UploadProgress: React.FC<UploadProgressProps> = ({
@@ -20,27 +20,19 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
   batchId,
   onDownload,
   onUpload,
-  hasError = false
+  hasError = false,
+  isDownloading = false,
+  downloadProgress = 0
 }) => {
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const handleDownload = async () => {
-    if (!batchId) return;
-    
-    setIsDownloading(true);
-    
-    try {
-      // Get the download URL - this will stop the loading state when complete
-      await getDownloadUrl(batchId);
-      
-      // Call the original onDownload function
-      onDownload();
-    } catch (error) {
-      console.error('Error getting download URL:', error);
-    } finally {
-      // Set downloading to false when the URL is returned
-      setIsDownloading(false);
+  const getProgressText = () => {
+    if (isDownloading) {
+      if (downloadProgress < 0) return 'Preparing download...';
+      return `${Math.round(downloadProgress)}%`;
     }
+    if (isUploading) {
+      return progress ? `${Math.round(progress)}%` : 'Processing...';
+    }
+    return '';
   };
 
   if (isUploading || isDownloading) {
@@ -51,17 +43,17 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
             {isDownloading ? "Downloading property video..." : "Creating property video..."}
           </span>
           <span className="text-sm font-medium">
-            {isDownloading ? "Preparing files..." : (progress ? `${Math.round(progress)}%` : 'Processing...')}
+            {getProgressText()}
           </span>
         </div>
         <Progress 
-          value={isDownloading ? 50 : (progress || undefined)}
-          isIndeterminate={isDownloading || !progress} 
+          value={isDownloading ? downloadProgress : progress}
+          isIndeterminate={(isDownloading && downloadProgress < 0) || (!isDownloading && !progress)} 
           className="h-2"
         />
         <p className="text-xs text-muted-foreground text-center">
           {isDownloading 
-            ? "Your download will begin shortly. Please wait..." 
+            ? downloadProgress < 100 ? "Downloading your property video. Please wait..." : "Download complete!"
             : "Do not leave the page, this may take a few minutes depending on the number of images"}
         </p>
       </div>
@@ -83,7 +75,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
           </Button>
           <Button 
             className="w-1/2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600" 
-            onClick={handleDownload}
+            onClick={onDownload}
           >
             <Download className="mr-2 h-4 w-4" />
             Try Download
@@ -96,7 +88,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
   // Only show download button when batch is completed (batchId exists and not uploading)
   if (batchId && !isUploading) {
     return (
-      <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600" onClick={handleDownload}>
+      <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600" onClick={onDownload}>
         <Download className="mr-2 h-4 w-4" />
         Download Property Videos
       </Button>
